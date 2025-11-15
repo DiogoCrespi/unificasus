@@ -397,139 +397,126 @@ public class ProcedimentoRepository : IProcedimentoRepository
 
     private static Procedimento MapProcedimento(FbDataReader reader)
     {
-        // Tenta ler NO_PROCEDIMENTO como BLOB primeiro (se usar CAST no SQL)
-        // Isso permite acesso aos bytes brutos antes de qualquer interpretação
+        // Prioridade: Tenta ler o campo NO_PROCEDIMENTO diretamente primeiro
+        // Se não funcionar, tenta ler do BLOB
         string? noProcedimento = null;
+        
+        // Primeiro tenta o campo direto (pode estar funcionando melhor)
         try
         {
-            var blobOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO_BLOB");
-            if (!reader.IsDBNull(blobOrdinal))
+            var campoOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO");
+            if (!reader.IsDBNull(campoOrdinal))
             {
-                byte[]? blobBytes = null;
-                
-                // Tenta diferentes formas de obter os bytes do BLOB
-                var blobValue = reader.GetValue(blobOrdinal);
-                
-                if (blobValue is byte[] bytes)
+                // Usa o helper que já trata encoding corretamente
+                noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO");
+            }
+        }
+        catch
+        {
+            // Se não encontrar o campo direto, tenta BLOB
+        }
+        
+        // Se o campo direto não funcionou ou está vazio, tenta BLOB
+        if (string.IsNullOrEmpty(noProcedimento))
+        {
+            try
+            {
+                var blobOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO_BLOB");
+                if (!reader.IsDBNull(blobOrdinal))
                 {
-                    // Retornou diretamente como byte[]
-                    blobBytes = bytes;
-                }
-                else
-                {
-                    // Tenta usar GetBytes para obter os bytes do BLOB
-                    try
-                    {
-                        // Primeiro obtém o tamanho do BLOB
-                        var length = reader.GetBytes(blobOrdinal, 0, null, 0, 0);
-                        if (length > 0)
-                        {
-                            blobBytes = new byte[(int)length];
-                            // Lê todos os bytes do BLOB
-                            var bytesRead = reader.GetBytes(blobOrdinal, 0, blobBytes, 0, (int)length);
-                            // Se leu menos bytes do que esperado, ajusta o tamanho
-                            if (bytesRead < length)
-                            {
-                                var tempBytes = new byte[(int)bytesRead];
-                                Array.Copy(blobBytes, 0, tempBytes, 0, (int)bytesRead);
-                                blobBytes = tempBytes;
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Se GetBytes falhar, tenta ler como string (pode ser que o driver já tenha convertido)
-                        try
-                        {
-                            var blobString = reader.GetString(blobOrdinal);
-                            if (!string.IsNullOrEmpty(blobString))
-                            {
-                                // Converte usando o helper
-                                noProcedimento = ConvertBlobToString(blobString);
-                            }
-                        }
-                        catch
-                        {
-                            // Se tudo falhar, deixa null
-                            noProcedimento = null;
-                        }
-                    }
-                }
-                
-                // Se conseguiu obter bytes, converte para string usando Windows-1252
-                if (blobBytes != null && blobBytes.Length > 0)
-                {
-                    // Remove bytes nulos no final se houver
-                    int length = blobBytes.Length;
-                    while (length > 0 && blobBytes[length - 1] == 0)
-                    {
-                        length--;
-                    }
+                    byte[]? blobBytes = null;
                     
-                    if (length > 0)
+                    // Tenta diferentes formas de obter os bytes do BLOB
+                    var blobValue = reader.GetValue(blobOrdinal);
+                    
+                    if (blobValue is byte[] bytes)
                     {
-                        // Cria array apenas com os bytes válidos
-                        byte[] validBytes = new byte[length];
-                        Array.Copy(blobBytes, 0, validBytes, 0, length);
-                        
-                        // Converte os bytes usando Windows-1252 (padrão para bancos brasileiros)
-                        // Com Charset=NONE, o Firebird retorna bytes brutos que devem ser interpretados como Windows-1252
+                        // Retornou diretamente como byte[]
+                        blobBytes = bytes;
+                    }
+                    else
+                    {
+                        // Tenta usar GetBytes para obter os bytes do BLOB
                         try
                         {
-                            var win1252 = System.Text.Encoding.GetEncoding(1252);
-                            noProcedimento = win1252.GetString(validBytes);
+                            // Primeiro obtém o tamanho do BLOB
+                            var length = reader.GetBytes(blobOrdinal, 0, null, 0, 0);
+                            if (length > 0)
+                            {
+                                blobBytes = new byte[(int)length];
+                                // Lê todos os bytes do BLOB
+                                var bytesRead = reader.GetBytes(blobOrdinal, 0, blobBytes, 0, (int)length);
+                                // Se leu menos bytes do que esperado, ajusta o tamanho
+                                if (bytesRead < length)
+                                {
+                                    var tempBytes = new byte[(int)bytesRead];
+                                    Array.Copy(blobBytes, 0, tempBytes, 0, (int)bytesRead);
+                                    blobBytes = tempBytes;
+                                }
+                            }
                         }
                         catch
                         {
-                            // Se falhar Windows-1252, tenta Latin1 (mais compatível)
+                            // Se GetBytes falhar, tenta ler como string
                             try
                             {
-                                var latin1 = System.Text.Encoding.GetEncoding("ISO-8859-1");
-                                noProcedimento = latin1.GetString(validBytes);
+                                var blobString = reader.GetString(blobOrdinal);
+                                if (!string.IsNullOrEmpty(blobString))
+                                {
+                                    // Converte usando o helper
+                                    noProcedimento = ConvertBlobToString(blobString);
+                                }
                             }
                             catch
                             {
-                                // Última tentativa: ASCII (perde acentos mas funciona)
-                                noProcedimento = System.Text.Encoding.ASCII.GetString(validBytes);
+                                // Se tudo falhar, deixa null
+                            }
+                        }
+                    }
+                    
+                    // Se conseguiu obter bytes, converte para string usando Windows-1252
+                    if (blobBytes != null && blobBytes.Length > 0)
+                    {
+                        // Remove bytes nulos no final se houver
+                        int length = blobBytes.Length;
+                        while (length > 0 && blobBytes[length - 1] == 0)
+                        {
+                            length--;
+                        }
+                        
+                        if (length > 0)
+                        {
+                            // Cria array apenas com os bytes válidos
+                            byte[] validBytes = new byte[length];
+                            Array.Copy(blobBytes, 0, validBytes, 0, length);
+                            
+                            // Converte os bytes usando Windows-1252 (padrão para bancos brasileiros)
+                            try
+                            {
+                                var win1252 = System.Text.Encoding.GetEncoding(1252);
+                                noProcedimento = win1252.GetString(validBytes);
+                            }
+                            catch
+                            {
+                                // Se falhar Windows-1252, tenta Latin1
+                                try
+                                {
+                                    var latin1 = System.Text.Encoding.GetEncoding("ISO-8859-1");
+                                    noProcedimento = latin1.GetString(validBytes);
+                                }
+                                catch
+                                {
+                                    // Última tentativa: ASCII
+                                    noProcedimento = System.Text.Encoding.ASCII.GetString(validBytes);
+                                }
                             }
                         }
                     }
                 }
             }
-            
-            // Se ainda não conseguiu ler do BLOB, tenta ler o campo NO_PROCEDIMENTO diretamente
-            if (string.IsNullOrEmpty(noProcedimento))
-            {
-                try
-                {
-                    var campoOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO");
-                    if (!reader.IsDBNull(campoOrdinal))
-                    {
-                        // Usa o helper que já trata encoding corretamente
-                        noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO");
-                    }
-                }
-                catch
-                {
-                    // Se não encontrar o campo, deixa null
-                    noProcedimento = null;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log do erro para debug, mas não interrompe o processamento
-            // Se não conseguiu ler o BLOB, tenta ler o campo diretamente
-            System.Diagnostics.Debug.WriteLine($"Erro ao ler BLOB NO_PROCEDIMENTO: {ex.Message}\n{ex.StackTrace}");
-            
-            try
-            {
-                // Fallback: tenta ler o campo NO_PROCEDIMENTO diretamente
-                noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO");
-            }
             catch
             {
-                noProcedimento = null;
+                // Se não conseguir ler o BLOB, deixa null
             }
         }
 

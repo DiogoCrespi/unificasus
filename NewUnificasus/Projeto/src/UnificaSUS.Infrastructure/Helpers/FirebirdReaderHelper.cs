@@ -59,34 +59,17 @@ public static class FirebirdReaderHelper
                 
                 var win1252 = Encoding.GetEncoding(1252);
                 
-                // Abordagem 1: Usa Latin1 para preservar os bytes exatamente
-                // Latin1 mapeia byte para char 1:1, preservando todos os bytes
+                // Abordagem 1: Usa Latin1 (ISO-8859-1) para preservar bytes exatamente
+                // Latin1 mapeia byte para char 1:1, então podemos obter os bytes originais
                 try
                 {
                     var latin1 = Encoding.GetEncoding("ISO-8859-1");
-                    // Converte a string atual para bytes usando Latin1 (preserva bytes)
-                    byte[] latin1Bytes = latin1.GetBytes(value);
+                    // Converte a string para bytes usando Latin1 (preserva bytes 1:1)
+                    byte[] originalBytes = latin1.GetBytes(value);
                     // Agora converte os bytes para Windows-1252
-                    string corrected = win1252.GetString(latin1Bytes);
+                    string corrected = win1252.GetString(originalBytes);
                     
                     // Verifica se a conversão resultou em caracteres válidos
-                    if (!corrected.Contains('?') && !corrected.Any(c => char.IsControl(c) && c != '\r' && c != '\n' && c != '\t'))
-                    {
-                        return corrected;
-                    }
-                }
-                catch { }
-                
-                // Abordagem 2: Assume que os bytes estão sendo interpretados como UTF-8
-                // mas na verdade são Windows-1252
-                try
-                {
-                    var utf8 = Encoding.UTF8;
-                    // Reconstrói os bytes assumindo que foram interpretados como UTF-8
-                    byte[] utf8Bytes = utf8.GetBytes(value);
-                    // Reinterpreta como Windows-1252
-                    string corrected = win1252.GetString(utf8Bytes);
-                    
                     if (!corrected.Contains('?'))
                     {
                         return corrected;
@@ -94,7 +77,8 @@ public static class FirebirdReaderHelper
                 }
                 catch { }
                 
-                // Abordagem 3: Usa o encoding padrão do sistema
+                // Abordagem 2: Tenta obter os bytes usando o encoding padrão do sistema
+                // e depois reconverter com Windows-1252
                 try
                 {
                     var defaultEncoding = Encoding.Default;
