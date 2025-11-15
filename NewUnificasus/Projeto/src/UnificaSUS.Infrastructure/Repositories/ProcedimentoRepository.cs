@@ -1,5 +1,6 @@
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using UnificaSUS.Core.Entities;
 using UnificaSUS.Core.Interfaces;
 using UnificaSUS.Infrastructure.Data;
@@ -425,7 +426,14 @@ public class ProcedimentoRepository : IProcedimentoRepository
                         {
                             blobBytes = new byte[(int)length];
                             // Lê todos os bytes do BLOB
-                            reader.GetBytes(blobOrdinal, 0, blobBytes, 0, (int)length);
+                            var bytesRead = reader.GetBytes(blobOrdinal, 0, blobBytes, 0, (int)length);
+                            // Se leu menos bytes do que esperado, ajusta o tamanho
+                            if (bytesRead < length)
+                            {
+                                var tempBytes = new byte[(int)bytesRead];
+                                Array.Copy(blobBytes, 0, tempBytes, 0, (int)bytesRead);
+                                blobBytes = tempBytes;
+                            }
                         }
                     }
                     catch
@@ -451,8 +459,41 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 // Se conseguiu obter bytes, converte para string usando Windows-1252
                 if (blobBytes != null && blobBytes.Length > 0)
                 {
-                    var encoding = System.Text.Encoding.GetEncoding(1252); // Windows-1252
-                    noProcedimento = encoding.GetString(blobBytes);
+                    // Remove bytes nulos no final se houver
+                    int length = blobBytes.Length;
+                    while (length > 0 && blobBytes[length - 1] == 0)
+                    {
+                        length--;
+                    }
+                    
+                    if (length > 0)
+                    {
+                        // Cria array apenas com os bytes válidos
+                        byte[] validBytes = new byte[length];
+                        Array.Copy(blobBytes, 0, validBytes, 0, length);
+                        
+                        // Converte os bytes usando Windows-1252 (padrão para bancos brasileiros)
+                        // Com Charset=NONE, o Firebird retorna bytes brutos que devem ser interpretados como Windows-1252
+                        try
+                        {
+                            var win1252 = System.Text.Encoding.GetEncoding(1252);
+                            noProcedimento = win1252.GetString(validBytes);
+                        }
+                        catch
+                        {
+                            // Se falhar Windows-1252, tenta Latin1 (mais compatível)
+                            try
+                            {
+                                var latin1 = System.Text.Encoding.GetEncoding("ISO-8859-1");
+                                noProcedimento = latin1.GetString(validBytes);
+                            }
+                            catch
+                            {
+                                // Última tentativa: ASCII (perde acentos mas funciona)
+                                noProcedimento = System.Text.Encoding.ASCII.GetString(validBytes);
+                            }
+                        }
+                    }
                 }
             }
             
@@ -523,16 +564,45 @@ public class ProcedimentoRepository : IProcedimentoRepository
 
         try
         {
-            // Se a string contém caracteres que parecem errados, tenta reconverter
-            // Assume que os bytes foram interpretados incorretamente e precisa reconverter
-            var encoding = System.Text.Encoding.GetEncoding(1252); // Windows-1252
+            // Se não há caracteres especiais, retorna como está
+            if (!value.Any(c => c > 127))
+            {
+                return value;
+            }
+
+            var win1252 = System.Text.Encoding.GetEncoding(1252);
             
-            // Se a string tem caracteres especiais mas parecem errados, tenta reconverter
-            // Primeiro, converte para bytes usando o encoding atual
-            var currentBytes = System.Text.Encoding.Default.GetBytes(value);
+            // Tenta diferentes abordagens de conversão
+            // Abordagem 1: Latin1 preserva os bytes exatamente
+            try
+            {
+                var latin1 = System.Text.Encoding.GetEncoding("ISO-8859-1");
+                byte[] latin1Bytes = latin1.GetBytes(value);
+                string corrected = win1252.GetString(latin1Bytes);
+                
+                if (!corrected.Contains('?'))
+                {
+                    return corrected;
+                }
+            }
+            catch { }
             
-            // Agora reinterpreta como Windows-1252
-            return encoding.GetString(currentBytes);
+            // Abordagem 2: Encoding padrão do sistema
+            try
+            {
+                var defaultEncoding = System.Text.Encoding.Default;
+                byte[] defaultBytes = defaultEncoding.GetBytes(value);
+                string corrected = win1252.GetString(defaultBytes);
+                
+                if (!corrected.Contains('?'))
+                {
+                    return corrected;
+                }
+            }
+            catch { }
+            
+            // Se nada funcionou, retorna original
+            return value;
         }
         catch
         {

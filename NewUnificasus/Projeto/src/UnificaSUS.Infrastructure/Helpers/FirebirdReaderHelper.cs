@@ -47,8 +47,8 @@ public static class FirebirdReaderHelper
             
             // Se chegou aqui, o valor já veio como string
             // Com Charset=NONE, o Firebird retorna dados brutos do banco
-            // O .NET pode estar interpretando como UTF-8, mas os dados estão em Windows-1252 (pt-BR)
-            // Precisamos reconstruir os bytes originais e reconverter corretamente
+            // O .NET pode estar interpretando incorretamente
+            // Vamos tentar diferentes abordagens de reconversão
             try
             {
                 // Se não há caracteres especiais, retorna como está
@@ -57,47 +57,64 @@ public static class FirebirdReaderHelper
                     return value;
                 }
                 
-                // Tem caracteres especiais - precisa converter
-                // A string atual pode estar sendo interpretada como UTF-8, mas os bytes originais são Windows-1252
-                // Vamos reconstruir os bytes originais usando UTF-8 (como o .NET interpretou)
-                // e depois reinterpretar como Windows-1252
-                var utf8 = Encoding.UTF8;
                 var win1252 = Encoding.GetEncoding(1252);
                 
-                // Primeiro: converte a string atual (interpretada como UTF-8) para bytes
-                byte[] bytesFromUtf8 = utf8.GetBytes(value);
-                
-                // Agora: interpreta esses bytes como se fossem Windows-1252
-                // Isso corrige a acentuação
-                string corrected = win1252.GetString(bytesFromUtf8);
-                
-                // Se a conversão resultou em caracteres de substituição, tenta outra abordagem
-                if (corrected.Contains('?'))
+                // Abordagem 1: Usa Latin1 para preservar os bytes exatamente
+                // Latin1 mapeia byte para char 1:1, preservando todos os bytes
+                try
                 {
-                    // Tenta como se a string já estivesse em Windows-1252 mas mal interpretada
-                    // Converte para bytes usando o encoding padrão do sistema
-                    var defaultEncoding = Encoding.Default;
-                    byte[] defaultBytes = defaultEncoding.GetBytes(value);
-                    return win1252.GetString(defaultBytes);
+                    var latin1 = Encoding.GetEncoding("ISO-8859-1");
+                    // Converte a string atual para bytes usando Latin1 (preserva bytes)
+                    byte[] latin1Bytes = latin1.GetBytes(value);
+                    // Agora converte os bytes para Windows-1252
+                    string corrected = win1252.GetString(latin1Bytes);
+                    
+                    // Verifica se a conversão resultou em caracteres válidos
+                    if (!corrected.Contains('?') && !corrected.Any(c => char.IsControl(c) && c != '\r' && c != '\n' && c != '\t'))
+                    {
+                        return corrected;
+                    }
                 }
+                catch { }
                 
-                return corrected;
-            }
-            catch
-            {
-                // Se falhar, tenta abordagem alternativa: assume que já está em Windows-1252
+                // Abordagem 2: Assume que os bytes estão sendo interpretados como UTF-8
+                // mas na verdade são Windows-1252
+                try
+                {
+                    var utf8 = Encoding.UTF8;
+                    // Reconstrói os bytes assumindo que foram interpretados como UTF-8
+                    byte[] utf8Bytes = utf8.GetBytes(value);
+                    // Reinterpreta como Windows-1252
+                    string corrected = win1252.GetString(utf8Bytes);
+                    
+                    if (!corrected.Contains('?'))
+                    {
+                        return corrected;
+                    }
+                }
+                catch { }
+                
+                // Abordagem 3: Usa o encoding padrão do sistema
                 try
                 {
                     var defaultEncoding = Encoding.Default;
-                    var win1252 = Encoding.GetEncoding(1252);
                     byte[] defaultBytes = defaultEncoding.GetBytes(value);
-                    return win1252.GetString(defaultBytes);
+                    string corrected = win1252.GetString(defaultBytes);
+                    
+                    if (!corrected.Contains('?'))
+                    {
+                        return corrected;
+                    }
                 }
-                catch
-                {
-                    // Última tentativa: retorna como está
-                    return value;
-                }
+                catch { }
+                
+                // Se nada funcionou, retorna o valor original
+                return value;
+            }
+            catch
+            {
+                // Se falhar tudo, retorna como está
+                return value;
             }
         }
         catch
