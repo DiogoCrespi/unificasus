@@ -1,0 +1,307 @@
+<Window x:Class="UnificaSUS.WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Claupers UnificaSus - Gerenciador da tabela unificada do SUS - versão 3.0.0.2" 
+        Height="650" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="LightGray">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Barra de Título e Navegação -->
+        <Grid Grid.Row="0" Background="White" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Botões de Navegação -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5">
+                <Button Content="&lt;" Width="30" Height="25" Click="NavPrevious_Click" Margin="2"/>
+                <Button Content="&lt;&lt;" Width="30" Height="25" Click="NavFirst_Click" Margin="2"/>
+                <Button Content="&gt;&gt;" Width="30" Height="25" Click="NavLast_Click" Margin="2"/>
+                <Button Content="&gt;" Width="30" Height="25" Click="NavNext_Click" Margin="2"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Área Principal: TreeView à esquerda e detalhes à direita -->
+        <Grid Grid.Row="1" Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="250"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- TreeView de Categorias (Esquerda) -->
+            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,5,0">
+                <TreeView x:Name="CategoriasTreeView" 
+                          BorderThickness="0"
+                          SelectedItemChanged="CategoriasTreeView_SelectedItemChanged">
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate ItemsSource="{Binding SubGrupos}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
+                                <TextBlock>
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0} - {1}">
+                                            <Binding Path="CoGrupo"/>
+                                            <Binding Path="NoGrupo"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
+                            <HierarchicalDataTemplate.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding FormasOrganizacao}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
+                                        <TextBlock>
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} - {1}">
+                                                    <Binding Path="CoSubGrupo"/>
+                                                    <Binding Path="NoSubGrupo"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <HierarchicalDataTemplate.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
+                                                <TextBlock>
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} - {1}">
+                                                            <Binding Path="CoFormaOrganizacao"/>
+                                                            <Binding Path="NoFormaOrganizacao"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </HierarchicalDataTemplate.ItemTemplate>
+                                </HierarchicalDataTemplate>
+                            </HierarchicalDataTemplate.ItemTemplate>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Border>
+
+            <!-- Área Central: Detalhes do Procedimento e Grid -->
+            <Grid Grid.Column="1" Margin="0,0,5,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Campos de Detalhes do Procedimento -->
+                <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="10" Margin="0,0,0,5">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Coluna 1 -->
+                            <Label Grid.Row="0" Grid.Column="0" Content="Procedimento:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtProcedimento" Grid.Row="0" Grid.Column="1" Width="150" Margin="5"/>
+
+                            <Label Grid.Row="0" Grid.Column="2" Content="Valor S.A.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtValorSA" Grid.Row="0" Grid.Column="3" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="0" Grid.Column="4" Content="Valor S.H.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtValorSH" Grid.Row="0" Grid.Column="5" Width="100" Margin="5"/>
+
+                            <!-- Coluna 2 -->
+                            <Label Grid.Row="1" Grid.Column="0" Content="Valor S.P.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtValorSP" Grid.Row="1" Grid.Column="1" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="1" Grid.Column="2" Content="Valor T.A.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtValorTA" Grid.Row="1" Grid.Column="3" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="1" Grid.Column="4" Content="Valor T.H.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtValorTH" Grid.Row="1" Grid.Column="5" Width="100" Margin="5"/>
+
+                            <!-- Coluna 3 -->
+                            <Label Grid.Row="2" Grid.Column="0" Content="Pontos:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtPontos" Grid.Row="2" Grid.Column="1" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="2" Grid.Column="2" Content="Permanencia:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtPermanencia" Grid.Row="2" Grid.Column="3" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="2" Grid.Column="4" Content="Id. Min.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtIdMin" Grid.Row="2" Grid.Column="5" Width="100" Margin="5"/>
+
+                            <!-- Linha 3 -->
+                            <Label Grid.Row="3" Grid.Column="0" Content="Id. Max.:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtIdMax" Grid.Row="3" Grid.Column="1" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="3" Grid.Column="2" Content="Sexo:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtSexo" Grid.Row="3" Grid.Column="3" Width="100" Margin="5"/>
+
+                            <Label Grid.Row="3" Grid.Column="4" Content="Tempo permanência:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtTempoPermanencia" Grid.Row="3" Grid.Column="5" Width="100" Margin="5"/>
+
+                            <!-- Linha 4 -->
+                            <Label Grid.Row="4" Grid.Column="0" Content="Tipo de finaciamento:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtFinanciamento" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Width="200" Margin="5"/>
+
+                            <Label Grid.Row="4" Grid.Column="3" Content="Complexidade:" HorizontalAlignment="Right" Margin="5"/>
+                            <TextBox x:Name="TxtComplexidade" Grid.Row="4" Grid.Column="4" Grid.ColumnSpan="2" Width="200" Margin="5"/>
+                        </Grid>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Grid de Procedimentos -->
+                <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White">
+                    <DataGrid x:Name="ProcedimentosDataGrid" 
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              GridLinesVisibility="All"
+                              HeadersVisibility="Column"
+                              SelectionChanged="ProcedimentosDataGrid_SelectionChanged"
+                              Sorting="ProcedimentosDataGrid_Sorting">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Procedimento" Binding="{Binding CoProcedimento}" Width="120" CanUserSort="True"/>
+                            <DataGridTextColumn Header="Descrição" Binding="{Binding NoProcedimento}" Width="*" CanUserSort="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </Grid>
+
+            <!-- Painel Direito: Filtros e Ações -->
+            <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="5">
+                <StackPanel>
+                    <!-- Menu Dropdown de Filtros -->
+                    <ComboBox x:Name="FiltrosComboBox" 
+                              Margin="0,0,0,10"
+                              SelectedIndex="0">
+                        <ComboBoxItem Content="Cid10"/>
+                        <ComboBoxItem Content="Compatíveis"/>
+                        <ComboBoxItem Content="Habilitação"/>
+                        <ComboBoxItem Content="CBO"/>
+                        <ComboBoxItem Content="Serviços"/>
+                        <ComboBoxItem Content="Tipo de Leito"/>
+                        <ComboBoxItem Content="Modalidade"/>
+                        <ComboBoxItem Content="Instrumento de Registro"/>
+                        <ComboBoxItem Content="Detalhes"/>
+                        <ComboBoxItem Content="Incremento"/>
+                        <ComboBoxItem Content="Descrição"/>
+                    </ComboBox>
+
+                    <!-- Botões de Ação -->
+                    <Button Content="Notas da Versão" 
+                            Background="LightBlue" 
+                            Padding="10,5" 
+                            Margin="0,0,0,5"
+                            Click="NotasVersao_Click"/>
+
+                    <Button Content="Cadastrar Serviço/Classificação" 
+                            IsEnabled="False"
+                            Padding="10,5" 
+                            Margin="0,0,0,5"
+                            Click="CadastrarServico_Click"/>
+
+                    <Button Content="ATIVAR COMPETÊNCIA" 
+                            Background="LightBlue" 
+                            FontWeight="Bold"
+                            Padding="10,5" 
+                            Margin="0,0,0,10"
+                            Click="AtivarCompetencia_Click"/>
+
+                    <!-- Seleção de Competência -->
+                    <Label Content="Competência:" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="CompetenciaComboBox" 
+                              Margin="0,0,0,5"
+                              SelectionChanged="CompetenciaComboBox_SelectionChanged"/>
+                    
+                    <Button Content="✓" 
+                            Background="Red" 
+                            Foreground="White"
+                            FontWeight="Bold"
+                            Width="30" 
+                            Height="30"
+                            HorizontalAlignment="Left"
+                            Click="ConfirmarCompetencia_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Rodapé -->
+        <Grid Grid.Row="3" Background="White" Margin="0,5,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+        <!-- Conteúdo do Rodapé -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Link Detalhamento -->
+            <StackPanel Grid.Column="0" Margin="10,5">
+                <TextBlock>
+                    <Hyperlink x:Name="DetalhamentoLink" 
+                               Click="DetalhamentoLink_Click">
+                        <Run Text="Detalhamento por forma de organização."/>
+                    </Hyperlink>
+                </TextBlock>
+                <TextBlock Text="Clique sobre o titulo da coluna para ordenar de forma diferente." 
+                           FontSize="10" 
+                           Margin="0,5,0,0"
+                           FontStyle="Italic"/>
+            </StackPanel>
+
+            <!-- Link do Site -->
+            <TextBlock Grid.Column="1" 
+                       HorizontalAlignment="Center" 
+                       VerticalAlignment="Center"
+                       Margin="10,5">
+                <Hyperlink NavigateUri="http://claupers.blogspot.com.br" 
+                           RequestNavigate="SiteLink_RequestNavigate">
+                    <Run Text="Para atualizações e informações visite claupers.blogspot.com.br"/>
+                </Hyperlink>
+            </TextBlock>
+
+            <!-- Botões do Rodapé -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,5">
+                <Button Content="Exbir Comuns" Margin="2" Padding="5,2" Click="ExibirComuns_Click"/>
+                <Button Content="Localizar" Margin="2" Padding="5,2" Click="Localizar_Click"/>
+                <Button Content="Importar" Margin="2" Padding="5,2" Click="Importar_Click"/>
+                <Button Content="Relatórios" Margin="2" Padding="5,2" Click="Relatorios_Click"/>
+                <Button Content="Proc. comuns" Margin="2" Padding="5,2" Click="ProcComuns_Click"/>
+            </StackPanel>
+        </Grid>
+        
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="1" VerticalAlignment="Bottom" Margin="0,5,0,0">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusTextBlock" Text="Pronto"/>
+            </StatusBarItem>
+        </StatusBar>
+        </Grid>
+
+    </Grid>
+</Window>
