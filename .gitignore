@@ -14,3 +14,6 @@
 /unificasus.exe
 /UNIFICASUS.GDB
 /unificasus.ini
+# Ignorar arquivos de backup (GDB/FBK)
+NewUnificasus/backup_servidor_remoto/*.fbk
+NewUnificasus/backup_servidor_remoto/*.GDB

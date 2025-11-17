@@ -1,0 +1,65 @@
+﻿
+TABELA                          
+=============================== 
+LAYOUT                          
+RL_EXCECAO_COMPATIBILIDADE      
+RL_PROCEDIMENTO_CID             
+RL_PROCEDIMENTO_COMPATIVEL      
+RL_PROCEDIMENTO_DETALHE         
+RL_PROCEDIMENTO_HABILITACAO     
+RL_PROCEDIMENTO_INCREMENTO      
+RL_PROCEDIMENTO_LEITO           
+RL_PROCEDIMENTO_MODALIDADE      
+RL_PROCEDIMENTO_OCUPACAO        
+RL_PROCEDIMENTO_ORIGEM          
+RL_PROCEDIMENTO_REGISTRO        
+RL_PROCEDIMENTO_SERVICO         
+RL_PROCEDIMENTO_SIA_SIH         
+TB_CID                          
+TB_COMPETENCIA_ATIVA            
+TB_DESCRICAO                    
+TB_DESCRICAO_DETALHE            
+TB_DETALHE                      
+TB_FINANCIAMENTO                
+
+TABELA                          
+=============================== 
+TB_FORMA_ORGANIZACAO            
+TB_GRUPO                        
+TB_GRUPO_HABILITACAO            
+TB_HABILITACAO                  
+TB_MODALIDADE                   
+TB_OCUPACAO                     
+TB_PARAMETROS                   
+TB_PROCEDIMENTO                 
+TB_PROCOMUNS                    
+TB_REGISTRO                     
+TB_RUBRICA                      
+TB_SERVCLASS                    
+TB_SERVICO                      
+TB_SERVICO_CLASSIFICACAO        
+TB_SIA_SIH                      
+TB_SUB_GRUPO                    
+TB_TIPO_LEITO                   
+
+
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO 
+=============================== =============================== ================ ======= 
+INDICE                          RDB$38                          INTEGER                4 
+CO_FINANCIAMENTO                RDB$39                          VARCHAR                2 
+CO_PROCEDIMENTO                 RDB$40                          VARCHAR               10 
+CO_RUBRICA                      RDB$41                          VARCHAR                6 
+DT_COMPETENCIA                  RDB$42                          VARCHAR                6 
+NO_PROCEDIMENTO                 RDB$43                          VARCHAR              250 
+QT_DIAS_PERMANENCIA             RDB$44                          INTEGER                4 
+QT_MAXIMA_EXECUCAO              RDB$45                          INTEGER                4 
+QT_PONTOS                       RDB$46                          INTEGER                4 
+TP_COMPLEXIDADE                 RDB$47                          VARCHAR                1 
+TP_SEXO                         RDB$48                          VARCHAR                1 
+VL_IDADE_MAXIMA                 RDB$49                          INTEGER                4 
+VL_IDADE_MINIMA                 RDB$50                          INTEGER                4 
+VL_SA                           RDB$51                          DOUBLE PRECISION       8 
+VL_SH                           RDB$52                          DOUBLE PRECISION       8 
+VL_SP                           RDB$53                          DOUBLE PRECISION       8 
+QT_TEMPO_PERMANENCIA            RDB$250                         INTEGER                4 
+

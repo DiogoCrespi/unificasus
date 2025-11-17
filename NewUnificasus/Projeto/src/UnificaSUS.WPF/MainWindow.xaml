@@ -314,6 +314,7 @@
                         <ComboBox x:Name="CompetenciaComboBox" 
                                   Grid.Column="0"
                                   Margin="0,0,5,0"
+                                  VerticalContentAlignment="Center"
                                   SelectionChanged="CompetenciaComboBox_SelectionChanged"
                                   ToolTip="Lista de competências disponíveis. Selecione uma e clique no botão de confirmação para ativar"/>
                         

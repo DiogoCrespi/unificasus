@@ -1,0 +1,37 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO NOT_NULL 
+=============================== =============================== ================ ======= ======== 
+PRC_COD                         RDB$246                         INTEGER                4        1 
+PRC_CODPROC                     RDB$247                         VARCHAR               10   <null> 
+PRC_NO_PROCEDIMENTO             RDB$248                         VARCHAR              250   <null> 
+PRC_OBSERVACOES                 RDB$249                         VARCHAR              255   <null> 
+
+
+INDICE                            UNICO    TIPO 
+=============================== ======= ======= 
+RDB$PRIMARY42                         1       0 
+
+
+CONSTRAINT_NAME                 TIPO        CAMPO                           
+=============================== =========== =============================== 
+INTEG_83                        NOT NULL    <null>                          
+INTEG_84                        PRIMARY KEY PRC_COD                         
+
+isql.exe : Statement failed, SQLSTATE = 42S22
+No C:\Users\Usuario\AppData\Local\Temp\ps-script-a6629caf-98a4-41dc-9181-a3f3025ab452.ps1:7 caractere:439
++ ... ; $result = & $IsqlPath -user $User -password $Password $DatabasePath ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Statement failed, SQLSTATE = 42S22:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Dynamic SQL Error
+-SQL error code = -206
+-Column unknown
+-CO_PROCEDIMENTO
+-At line 3, column 10
+After line 45 in file C:\Users\Usuario\AppData\Local\Temp\tmp3EFE.tmp
+
+      TOTAL_REGISTROS 
+===================== 
+                    4 
+

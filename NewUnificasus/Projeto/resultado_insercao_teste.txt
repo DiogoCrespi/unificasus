@@ -1,0 +1,11 @@
+﻿
+       PROXIMO_CODIGO 
+===================== 
+                    5 
+
+
+      CODIGO CODIGO_PROCEDIMENTO NOME_PROCEDIMENTO                                                                                                                                                                                                                                          OBSERVACOES                                                                                                                                                                                                                                                     
+============ =================== =============================================================================== =============================================================================== 
+           5 0301100012          ADMINISTRACAO DE MEDICAMENTOS NA ATENCA(                                                                                                                                                                                                                   Teste de inser????o manual - Data: 2025-11-17 17:37:45.6190                                                                                                                                                                                                     
+           2 0301100012          ADMINISTRACAO DE MEDICAMENTOS  NA ATENCAO ESPECIALIZADA POR (PACIENTE)                                                                                                                                                                                     <null>                                                                                                                                                                                                                                                          
+

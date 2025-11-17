@@ -31,11 +31,13 @@ public partial class App : System.Windows.Application
                     services.AddScoped<IProcedimentoRepository, ProcedimentoRepository>();
                     services.AddScoped<ICompetenciaRepository, CompetenciaRepository>();
                     services.AddScoped<IGrupoRepository, GrupoRepository>();
+                    services.AddScoped<IProcedimentoComumRepository, ProcedimentoComumRepository>();
 
                     // Application Services
                     services.AddScoped<ApplicationService.ProcedimentoService>();
                     services.AddScoped<ApplicationService.CompetenciaService>();
                     services.AddScoped<ApplicationService.GrupoService>();
+                    services.AddScoped<ApplicationService.ProcedimentoComumService>();
 
                     // UI - MainWindow precisa de IConfigurationReader
                     services.AddTransient<MainWindow>();
