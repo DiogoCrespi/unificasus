@@ -11,7 +11,6 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -21,19 +20,30 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             
-            <!-- Botões de Navegação -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5">
-                <Button Content="&lt;" Width="30" Height="25" Click="NavPrevious_Click" Margin="2"/>
-                <Button Content="&lt;&lt;" Width="30" Height="25" Click="NavFirst_Click" Margin="2"/>
-                <Button Content="&gt;&gt;" Width="30" Height="25" Click="NavLast_Click" Margin="2"/>
-                <Button Content="&gt;" Width="30" Height="25" Click="NavNext_Click" Margin="2"/>
+            <!-- Cabeçalho Centralizado com Nome do Submenu -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5">
+                <Button Content="&lt;" Width="30" Height="25" Click="NavPrevious_Click" Margin="2" ToolTip="Procedimento anterior"/>
+                <Button Content="&lt;&lt;" Width="30" Height="25" Click="NavFirst_Click" Margin="2" ToolTip="Primeiro procedimento"/>
+                <TextBlock x:Name="SubmenuHeaderTextBlock" 
+                          Text="Nenhum procedimento selecionado" 
+                          VerticalAlignment="Center" 
+                          Margin="10,0" 
+                          FontSize="12" 
+                          FontWeight="Bold"
+                          TextAlignment="Center"
+                          MinWidth="300"
+                          ToolTip="Nome do submenu do procedimento selecionado"/>
+                <Button Content="&gt;&gt;" Width="30" Height="25" Click="NavLast_Click" Margin="2" ToolTip="Último procedimento"/>
+                <Button Content="&gt;" Width="30" Height="25" Click="NavNext_Click" Margin="2" ToolTip="Próximo procedimento"/>
+                <Button Content="🔎" Width="30" Height="25" Click="Localizar_Click" Margin="5,2,2,2" ToolTip="Localizar procedimento" FontSize="14"/>
             </StackPanel>
         </Grid>
 
         <!-- Área Principal: TreeView à esquerda e detalhes à direita -->
-        <Grid Grid.Row="1" Margin="5">
+        <Grid Grid.Row="1" Margin="5" VerticalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="300"/>
                 <ColumnDefinition Width="*"/>
@@ -41,56 +51,59 @@
             </Grid.ColumnDefinitions>
 
             <!-- TreeView de Categorias (Esquerda) -->
-            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,5,0">
-                <TreeView x:Name="CategoriasTreeView" 
-                          BorderThickness="0"
-                          SelectedItemChanged="CategoriasTreeView_SelectedItemChanged">
-                    <TreeView.ItemTemplate>
-                        <HierarchicalDataTemplate ItemsSource="{Binding SubGrupos}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
-                                <TextBlock>
-                                    <TextBlock.Text>
-                                        <MultiBinding StringFormat="{}{0} - {1}">
-                                            <Binding Path="CoGrupo"/>
-                                            <Binding Path="NoGrupo"/>
-                                        </MultiBinding>
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </StackPanel>
-                            <HierarchicalDataTemplate.ItemTemplate>
-                                <HierarchicalDataTemplate ItemsSource="{Binding FormasOrganizacao}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
-                                        <TextBlock>
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} - {1}">
-                                                    <Binding Path="CoSubGrupo"/>
-                                                    <Binding Path="NoSubGrupo"/>
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                    </StackPanel>
-                                    <HierarchicalDataTemplate.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
-                                                <TextBlock>
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="{}{0} - {1}">
-                                                            <Binding Path="CoFormaOrganizacao"/>
-                                                            <Binding Path="NoFormaOrganizacao"/>
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </HierarchicalDataTemplate.ItemTemplate>
-                                </HierarchicalDataTemplate>
-                            </HierarchicalDataTemplate.ItemTemplate>
-                        </HierarchicalDataTemplate>
-                    </TreeView.ItemTemplate>
-                </TreeView>
+            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,5,0" VerticalAlignment="Stretch" ToolTip="Árvore de categorias de procedimentos">
+                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto">
+                    <TreeView x:Name="CategoriasTreeView" 
+                              BorderThickness="0"
+                              SelectedItemChanged="CategoriasTreeView_SelectedItemChanged"
+                              ToolTip="Selecione uma categoria, subgrupo ou forma de organização para filtrar os procedimentos">
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding SubGrupos}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
+                                    <TextBlock>
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0} - {1}">
+                                                <Binding Path="CoGrupo"/>
+                                                <Binding Path="NoGrupo"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                                <HierarchicalDataTemplate.ItemTemplate>
+                                    <HierarchicalDataTemplate ItemsSource="{Binding FormasOrganizacao}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
+                                            <TextBlock>
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0} - {1}">
+                                                        <Binding Path="CoSubGrupo"/>
+                                                        <Binding Path="NoSubGrupo"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <HierarchicalDataTemplate.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="+" Margin="0,0,5,0" FontWeight="Bold"/>
+                                                    <TextBlock>
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="{}{0} - {1}">
+                                                                <Binding Path="CoFormaOrganizacao"/>
+                                                                <Binding Path="NoFormaOrganizacao"/>
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </HierarchicalDataTemplate.ItemTemplate>
+                                    </HierarchicalDataTemplate>
+                                </HierarchicalDataTemplate.ItemTemplate>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </ScrollViewer>
             </Border>
 
             <!-- Área Central: Detalhes do Procedimento e Grid -->
@@ -101,87 +114,139 @@
                 </Grid.RowDefinitions>
 
                 <!-- Campos de Detalhes do Procedimento -->
-                <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="10" Margin="0,0,0,5">
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,0,5">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8">
                         <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Linha 1: Nome do Procedimento (expandido) -->
+                            <Grid Grid.Row="0" Margin="0,0,0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Grid.Column="0" Content="Procedimento:" HorizontalAlignment="Right" Margin="0,0,5,0" VerticalAlignment="Top" Padding="0,3,0,0" ToolTip="Código e nome do procedimento selecionado"/>
+                                <TextBox x:Name="TxtProcedimento" Grid.Column="1" 
+                                         TextWrapping="Wrap" 
+                                         AcceptsReturn="True" 
+                                         VerticalScrollBarVisibility="Auto"
+                                         MinHeight="40"
+                                         MaxHeight="80"
+                                         VerticalAlignment="Stretch"
+                                         IsReadOnly="True"
+                                         Margin="0"
+                                         ToolTip="Código e nome completo do procedimento selecionado"/>
+                            </Grid>
+                            
+                            <!-- Linha 2: Demais campos (compactos) -->
+                            <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="75"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="75"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="75"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="70"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="80"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="70"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- Coluna 1 -->
-                            <Label Grid.Row="0" Grid.Column="0" Content="Procedimento:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtProcedimento" Grid.Row="0" Grid.Column="1" Width="150" Margin="5"/>
+                            <!-- Linha 1 de campos -->
+                            <Label Grid.Row="0" Grid.Column="0" Content="Valor S.A.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Valor Serviço Ambulatorial"/>
+                            <TextBox x:Name="TxtValorSA" Grid.Row="0" Grid.Column="1" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Valor do Serviço Ambulatorial" IsReadOnly="True"/>
 
-                            <Label Grid.Row="0" Grid.Column="2" Content="Valor S.A.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtValorSA" Grid.Row="0" Grid.Column="3" Width="100" Margin="5"/>
+                            <Label Grid.Row="0" Grid.Column="2" Content="Valor S.H.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Valor Serviço Hospitalar"/>
+                            <TextBox x:Name="TxtValorSH" Grid.Row="0" Grid.Column="3" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Valor do Serviço Hospitalar" IsReadOnly="True"/>
 
-                            <Label Grid.Row="0" Grid.Column="4" Content="Valor S.H.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtValorSH" Grid.Row="0" Grid.Column="5" Width="100" Margin="5"/>
+                            <Label Grid.Row="0" Grid.Column="4" Content="Valor S.P.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Valor Serviço Profissional"/>
+                            <TextBox x:Name="TxtValorSP" Grid.Row="0" Grid.Column="5" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Valor do Serviço Profissional" IsReadOnly="True"/>
 
-                            <!-- Coluna 2 -->
-                            <Label Grid.Row="1" Grid.Column="0" Content="Valor S.P.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtValorSP" Grid.Row="1" Grid.Column="1" Width="100" Margin="5"/>
+                            <Label Grid.Row="0" Grid.Column="6" Content="Sexo:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Sexo permitido para o procedimento"/>
+                            <TextBox x:Name="TxtSexo" Grid.Row="0" Grid.Column="7" Margin="2,2,5,2" Padding="3,2" FontSize="11" MinWidth="150" ToolTip="Sexo permitido para o procedimento (Masculino, Feminino, Ambos, Não se aplica)" IsReadOnly="True"/>
 
-                            <Label Grid.Row="1" Grid.Column="2" Content="Valor T.A.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtValorTA" Grid.Row="1" Grid.Column="3" Width="100" Margin="5"/>
+                            <Label Grid.Row="0" Grid.Column="8" Content="Permanencia:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Dias de permanência"/>
+                            <TextBox x:Name="TxtPermanencia" Grid.Row="0" Grid.Column="9" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Quantidade de dias de permanência" IsReadOnly="True"/>
 
-                            <Label Grid.Row="1" Grid.Column="4" Content="Valor T.H.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtValorTH" Grid.Row="1" Grid.Column="5" Width="100" Margin="5"/>
+                            <!-- Linha 2 de campos -->
+                            <Label Grid.Row="1" Grid.Column="0" Content="Valor T.A.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Total Ambulatorial (S.A. + S.P.)"/>
+                            <TextBox x:Name="TxtValorTA" Grid.Row="1" Grid.Column="1" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Total Ambulatorial = Valor S.A. + Valor S.P." IsReadOnly="True"/>
 
-                            <!-- Coluna 3 -->
-                            <Label Grid.Row="2" Grid.Column="0" Content="Pontos:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtPontos" Grid.Row="2" Grid.Column="1" Width="100" Margin="5"/>
+                            <Label Grid.Row="1" Grid.Column="2" Content="Valor T.H.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Total Hospitalar (S.H. + S.P.)"/>
+                            <TextBox x:Name="TxtValorTH" Grid.Row="1" Grid.Column="3" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Total Hospitalar = Valor S.H. + Valor S.P." IsReadOnly="True"/>
 
-                            <Label Grid.Row="2" Grid.Column="2" Content="Permanencia:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtPermanencia" Grid.Row="2" Grid.Column="3" Width="100" Margin="5"/>
+                            <Label Grid.Row="1" Grid.Column="4" Content="Id. Min.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Idade mínima permitida"/>
+                            <TextBox x:Name="TxtIdMin" Grid.Row="1" Grid.Column="5" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Idade mínima em anos permitida para o procedimento" IsReadOnly="True"/>
 
-                            <Label Grid.Row="2" Grid.Column="4" Content="Id. Min.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtIdMin" Grid.Row="2" Grid.Column="5" Width="100" Margin="5"/>
+                            <Label Grid.Row="1" Grid.Column="6" Content="Id. Max.:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Idade máxima permitida"/>
+                            <TextBox x:Name="TxtIdMax" Grid.Row="1" Grid.Column="7" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Idade máxima em anos permitida para o procedimento" IsReadOnly="True"/>
 
-                            <!-- Linha 3 -->
-                            <Label Grid.Row="3" Grid.Column="0" Content="Id. Max.:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtIdMax" Grid.Row="3" Grid.Column="1" Width="100" Margin="5"/>
+                            <Label Grid.Row="1" Grid.Column="8" Content="Pontos:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Quantidade de pontos do procedimento"/>
+                            <TextBox x:Name="TxtPontos" Grid.Row="1" Grid.Column="9" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Quantidade de pontos atribuídos ao procedimento" IsReadOnly="True"/>
 
-                            <Label Grid.Row="3" Grid.Column="2" Content="Sexo:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtSexo" Grid.Row="3" Grid.Column="3" Width="100" Margin="5"/>
+                            <!-- Linha 3 de campos: Complexidade, Tipo de financiamento e Tempo permanência -->
+                            <Label Grid.Row="2" Grid.Column="0" Content="Complexidade:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Nível de complexidade do procedimento (Atenção Básica, Média Complexidade, Alta Complexidade)"/>
+                            <TextBox x:Name="TxtComplexidade" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Nível de complexidade do procedimento" IsReadOnly="True"/>
 
-                            <Label Grid.Row="3" Grid.Column="4" Content="Tempo permanência:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtTempoPermanencia" Grid.Row="3" Grid.Column="5" Width="100" Margin="5"/>
+                            <Label Grid.Row="2" Grid.Column="4" Content="Tipo de finaciamento:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Tipo de financiamento do procedimento"/>
+                            <TextBox x:Name="TxtFinanciamento" Grid.Row="2" Grid.Column="5" Grid.ColumnSpan="3" Margin="2,2,5,2" Padding="3,2" FontSize="11" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" MaxHeight="60" ToolTip="Tipo de financiamento do procedimento (ex: ATENÇÃO BÁSICA, MÉDIA COMPLEXIDADE, etc.)" IsReadOnly="True"/>
 
-                            <!-- Linha 4 -->
-                            <Label Grid.Row="4" Grid.Column="0" Content="Tipo de finaciamento:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtFinanciamento" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Width="200" Margin="5"/>
-
-                            <Label Grid.Row="4" Grid.Column="3" Content="Complexidade:" HorizontalAlignment="Right" Margin="5"/>
-                            <TextBox x:Name="TxtComplexidade" Grid.Row="4" Grid.Column="4" Grid.ColumnSpan="2" Width="200" Margin="5"/>
+                            <Label Grid.Row="2" Grid.Column="8" Content="Tempo permanência:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Tempo de permanência em horas"/>
+                            <TextBox x:Name="TxtTempoPermanencia" Grid.Row="2" Grid.Column="9" Grid.ColumnSpan="3" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Tempo de permanência em horas" IsReadOnly="True"/>
                         </Grid>
+                    </Grid>
                     </ScrollViewer>
                 </Border>
 
                 <!-- Grid de Procedimentos -->
-                <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White">
+                <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White" VerticalAlignment="Stretch" ToolTip="Lista de procedimentos. Clique em uma linha para ver os detalhes">
                     <DataGrid x:Name="ProcedimentosDataGrid" 
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
                               GridLinesVisibility="All"
                               HeadersVisibility="Column"
                               SelectionChanged="ProcedimentosDataGrid_SelectionChanged"
-                              Sorting="ProcedimentosDataGrid_Sorting">
+                              Sorting="ProcedimentosDataGrid_Sorting"
+                              CanUserResizeColumns="True"
+                              CanUserReorderColumns="False"
+                              ScrollViewer.VerticalScrollBarVisibility="Visible"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              ToolTip="Lista de procedimentos. Clique em uma linha para ver os detalhes. Clique no cabeçalho da coluna para ordenar">
+                        <DataGrid.Resources>
+                            <!-- Estilo para linha selecionada - Azul forte -->
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#0078D4"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="BorderBrush" Value="#005A9E"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.Resources>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Procedimento" Binding="{Binding CoProcedimento}" Width="120" CanUserSort="True"/>
-                            <DataGridTextColumn Header="Descrição" Binding="{Binding NoProcedimento}" Width="*" CanUserSort="True"/>
+                            <DataGridTextColumn Header="Descrição" Binding="{Binding NoProcedimento}" Width="*" MinWidth="400" CanUserSort="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="TextTrimming" Value="None"/>
+                                        <Setter Property="Margin" Value="5,2"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
@@ -192,61 +257,82 @@
                 <StackPanel>
                     <!-- Menu Dropdown de Filtros -->
                     <ComboBox x:Name="FiltrosComboBox" 
-                              Margin="0,0,0,10"
-                              SelectedIndex="0">
-                        <ComboBoxItem Content="Cid10"/>
-                        <ComboBoxItem Content="Compatíveis"/>
-                        <ComboBoxItem Content="Habilitação"/>
-                        <ComboBoxItem Content="CBO"/>
-                        <ComboBoxItem Content="Serviços"/>
-                        <ComboBoxItem Content="Tipo de Leito"/>
-                        <ComboBoxItem Content="Modalidade"/>
-                        <ComboBoxItem Content="Instrumento de Registro"/>
-                        <ComboBoxItem Content="Detalhes"/>
-                        <ComboBoxItem Content="Incremento"/>
-                        <ComboBoxItem Content="Descrição"/>
+                              Margin="0,0,0,5"
+                              SelectedIndex="0"
+                              ToolTip="Selecione o tipo de filtro para buscar itens relacionados ao procedimento">
+                        <ComboBoxItem Content="Cid10" ToolTip="CID-10 relacionado ao procedimento"/>
+                        <ComboBoxItem Content="Compatíveis" ToolTip="Procedimentos compatíveis"/>
+                        <ComboBoxItem Content="Habilitação" ToolTip="Habilitações relacionadas"/>
+                        <ComboBoxItem Content="CBO" ToolTip="CBO (Código Brasileiro de Ocupações) relacionado"/>
+                        <ComboBoxItem Content="Serviços" ToolTip="Serviços relacionados"/>
+                        <ComboBoxItem Content="Tipo de Leito" ToolTip="Tipos de leito relacionados"/>
+                        <ComboBoxItem Content="Modalidade" ToolTip="Modalidades relacionadas"/>
+                        <ComboBoxItem Content="Instrumento de Registro" ToolTip="Instrumentos de registro relacionados"/>
+                        <ComboBoxItem Content="Detalhes" ToolTip="Detalhes relacionados"/>
+                        <ComboBoxItem Content="Incremento" ToolTip="Incrementos relacionados"/>
+                        <ComboBoxItem Content="Descrição" ToolTip="Descrição do procedimento"/>
                     </ComboBox>
+
+                    <!-- Botão de Confirmação para Buscar Relacionados -->
+                    <Button Content="Buscar Relacionados" 
+                            Background="LightGreen" 
+                            Padding="10,5" 
+                            Margin="0,0,0,10"
+                            Click="BuscarRelacionados_Click"
+                            ToolTip="Busca itens relacionados ao procedimento selecionado conforme o filtro escolhido"/>
 
                     <!-- Botões de Ação -->
                     <Button Content="Notas da Versão" 
                             Background="LightBlue" 
                             Padding="10,5" 
                             Margin="0,0,0,5"
-                            Click="NotasVersao_Click"/>
+                            Click="NotasVersao_Click"
+                            ToolTip="Exibe as notas e informações da versão atual"/>
 
                     <Button Content="Cadastrar Serviço/Classificação" 
                             IsEnabled="False"
                             Padding="10,5" 
                             Margin="0,0,0,5"
-                            Click="CadastrarServico_Click"/>
+                            Click="CadastrarServico_Click"
+                            ToolTip="Cadastrar novo serviço ou classificação (indisponível)"/>
 
                     <Button Content="ATIVAR COMPETÊNCIA" 
                             Background="LightBlue" 
                             FontWeight="Bold"
                             Padding="10,5" 
                             Margin="0,0,0,10"
-                            Click="AtivarCompetencia_Click"/>
+                            Click="AtivarCompetencia_Click"
+                            ToolTip="Ativa a competência selecionada para uso no sistema"/>
 
                     <!-- Seleção de Competência -->
-                    <Label Content="Competência:" Margin="0,0,0,5"/>
-                    <ComboBox x:Name="CompetenciaComboBox" 
-                              Margin="0,0,0,5"
-                              SelectionChanged="CompetenciaComboBox_SelectionChanged"/>
-                    
-                    <Button Content="✓" 
-                            Background="Red" 
-                            Foreground="White"
-                            FontWeight="Bold"
-                            Width="30" 
-                            Height="30"
-                            HorizontalAlignment="Left"
-                            Click="ConfirmarCompetencia_Click"/>
+                    <Label Content="Competência:" Margin="0,0,0,5" ToolTip="Selecione a competência desejada"/>
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="CompetenciaComboBox" 
+                                  Grid.Column="0"
+                                  Margin="0,0,5,0"
+                                  SelectionChanged="CompetenciaComboBox_SelectionChanged"
+                                  ToolTip="Lista de competências disponíveis. Selecione uma e clique no botão de confirmação para ativar"/>
+                        
+                        <Button Content="✓" 
+                                Grid.Column="1"
+                                Background="LightBlue" 
+                                Foreground="White"
+                                FontWeight="Bold"
+                                Width="30" 
+                                Height="30"
+                                Click="ConfirmarCompetencia_Click"
+                                ToolTip="Confirma e ativa a competência selecionada"/>
+                    </Grid>
                 </StackPanel>
             </Border>
         </Grid>
 
         <!-- Rodapé -->
-        <Grid Grid.Row="3" Background="White" Margin="0,5,0,0">
+        <Grid Grid.Row="2" Background="White" Margin="0,5,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -264,14 +350,16 @@
             <StackPanel Grid.Column="0" Margin="10,5">
                 <TextBlock>
                     <Hyperlink x:Name="DetalhamentoLink" 
-                               Click="DetalhamentoLink_Click">
+                               Click="DetalhamentoLink_Click"
+                               ToolTip="Abre detalhamento por forma de organização">
                         <Run Text="Detalhamento por forma de organização."/>
                     </Hyperlink>
                 </TextBlock>
                 <TextBlock Text="Clique sobre o titulo da coluna para ordenar de forma diferente." 
                            FontSize="10" 
                            Margin="0,5,0,0"
-                           FontStyle="Italic"/>
+                           FontStyle="Italic"
+                           ToolTip="Dica: Clique no cabeçalho das colunas do DataGrid para ordenar"/>
             </StackPanel>
 
             <!-- Link do Site -->
@@ -280,25 +368,26 @@
                        VerticalAlignment="Center"
                        Margin="10,5">
                 <Hyperlink NavigateUri="http://claupers.blogspot.com.br" 
-                           RequestNavigate="SiteLink_RequestNavigate">
+                           RequestNavigate="SiteLink_RequestNavigate"
+                           ToolTip="Abre o site claupers.blogspot.com.br em seu navegador">
                     <Run Text="Para atualizações e informações visite claupers.blogspot.com.br"/>
                 </Hyperlink>
             </TextBlock>
 
             <!-- Botões do Rodapé -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,5">
-                <Button Content="Exbir Comuns" Margin="2" Padding="5,2" Click="ExibirComuns_Click"/>
-                <Button Content="Localizar" Margin="2" Padding="5,2" Click="Localizar_Click"/>
-                <Button Content="Importar" Margin="2" Padding="5,2" Click="Importar_Click"/>
-                <Button Content="Relatórios" Margin="2" Padding="5,2" Click="Relatorios_Click"/>
-                <Button Content="Proc. comuns" Margin="2" Padding="5,2" Click="ProcComuns_Click"/>
+                <Button Content="Exbir Comuns" Margin="2" Padding="5,2" Click="ExibirComuns_Click" ToolTip="Exibe procedimentos comuns"/>
+                <Button Content="Localizar" Margin="2" Padding="5,2" Click="Localizar_Click" ToolTip="Localiza procedimentos por termo de busca"/>
+                <Button Content="Importar" Margin="2" Padding="5,2" Click="Importar_Click" ToolTip="Importa dados de procedimentos"/>
+                <Button Content="Relatórios" Margin="2" Padding="5,2" Click="Relatorios_Click" ToolTip="Gera relatórios de procedimentos"/>
+                <Button Content="Proc. comuns" Margin="2" Padding="5,2" Click="ProcComuns_Click" ToolTip="Procedimentos comuns"/>
             </StackPanel>
         </Grid>
         
         <!-- Status Bar -->
-        <StatusBar Grid.Row="1" VerticalAlignment="Bottom" Margin="0,5,0,0">
+        <StatusBar Grid.Row="1" VerticalAlignment="Bottom" Margin="0,5,0,0" ToolTip="Barra de status do sistema">
             <StatusBarItem>
-                <TextBlock x:Name="StatusTextBlock" Text="Pronto"/>
+                <TextBlock x:Name="StatusTextBlock" Text="Pronto" ToolTip="Status atual do sistema"/>
             </StatusBarItem>
         </StatusBar>
         </Grid>

@@ -132,5 +132,69 @@ public class ProcedimentoService
             throw;
         }
     }
+
+    /// <summary>
+    /// Busca CID10 relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarCID10RelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarCID10RelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca procedimentos compatíveis relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarCompativeisRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarCompativeisRelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca habilitações relacionadas a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarHabilitacoesRelacionadasAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarHabilitacoesRelacionadasAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca CBOs relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarCBOsRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarCBOsRelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca serviços relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarServicosRelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca tipos de leito relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarTiposLeitoRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarTiposLeitoRelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca modalidades relacionadas a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarModalidadesRelacionadasAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarModalidadesRelacionadasAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca descrição relacionada a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarDescricaoRelacionadaAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarDescricaoRelacionadaAsync(coProcedimento, competencia, cancellationToken);
+    }
 }
 

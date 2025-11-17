@@ -1,6 +1,7 @@
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Extensions.Logging;
 using System.Linq;
+using System.Text;
 using UnificaSUS.Core.Entities;
 using UnificaSUS.Core.Interfaces;
 using UnificaSUS.Infrastructure.Data;
@@ -140,6 +141,7 @@ public class ProcedimentoRepository : IProcedimentoRepository
         // Otimizado: usa LIKE com % apenas no final quando possível (mais rápido que CONTAINING)
         // Limita a 1000 resultados para melhor performance
         // Usa CAST para BLOB para garantir acesso aos bytes brutos
+        // Simplificado para evitar erro de parâmetro com CAST dentro de UPPER
         const string sql = @"
             SELECT FIRST 1000
                 pr.CO_PROCEDIMENTO,
@@ -161,22 +163,19 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 pr.DT_COMPETENCIA
             FROM TB_PROCEDIMENTO pr
             WHERE pr.DT_COMPETENCIA = @competencia
-              AND (pr.CO_PROCEDIMENTO LIKE @filtro 
-                   OR UPPER(CAST(pr.NO_PROCEDIMENTO AS VARCHAR(250))) LIKE @filtroUpper)
+              AND (pr.CO_PROCEDIMENTO CONTAINING @filtro 
+                   OR pr.NO_PROCEDIMENTO CONTAINING @filtro)
             ORDER BY pr.CO_PROCEDIMENTO";
 
         await _context.OpenAsync(cancellationToken);
 
         var procedimentos = new List<Procedimento>();
-        // Se filtro começa com texto específico, usa STARTING WITH (mais rápido)
-        // Senão, usa LIKE com wildcards
-        var filtroUpper = $"%{filtro.ToUpper()}%";
-        var filtroLike = $"%{filtro}%";
+        // Usa CONTAINING que é mais simples e não precisa de wildcards
+        // CONTAINING faz busca case-insensitive automaticamente
 
         using var command = new FbCommand(sql, _context.Connection);
         command.Parameters.AddWithValue("@competencia", competencia);
-        command.Parameters.AddWithValue("@filtro", filtroLike);
-        command.Parameters.AddWithValue("@filtroUpper", filtroUpper);
+        command.Parameters.AddWithValue("@filtro", filtro);
 
         try
         {
@@ -395,135 +394,126 @@ public class ProcedimentoRepository : IProcedimentoRepository
         return procedimentos;
     }
 
-    private static Procedimento MapProcedimento(FbDataReader reader)
+    /// <summary>
+    /// Converte bytes diretamente para Windows-1252 (helper local)
+    /// </summary>
+    private static string ConvertBytesToWindows1252(byte[] bytes)
     {
-        // Prioridade: Tenta ler o campo NO_PROCEDIMENTO diretamente primeiro
-        // Se não funcionar, tenta ler do BLOB
-        string? noProcedimento = null;
-        
-        // Primeiro tenta o campo direto (pode estar funcionando melhor)
+        if (bytes == null || bytes.Length == 0)
+            return string.Empty;
+
         try
         {
-            var campoOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO");
-            if (!reader.IsDBNull(campoOrdinal))
+            var encoding = Encoding.GetEncoding(1252); // Windows-1252
+            return encoding.GetString(bytes);
+        }
+        catch
+        {
+            // Se falhar, tenta Latin1
+            try
             {
-                // Usa o helper que já trata encoding corretamente
-                noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO");
+                var encoding = Encoding.GetEncoding("ISO-8859-1");
+                return encoding.GetString(bytes);
+            }
+            catch
+            {
+                // Último recurso: usa encoding padrão
+                return Encoding.Default.GetString(bytes);
+            }
+        }
+    }
+
+    private static decimal? TryGetDecimal(FbDataReader reader, string columnName)
+    {
+        try
+        {
+            var ordinal = reader.GetOrdinal(columnName);
+            if (reader.IsDBNull(ordinal))
+                return null;
+            return reader.GetDecimal(ordinal);
+        }
+        catch
+        {
+            // Campo não existe ou não pode ser lido - retorna null
+            return null;
+        }
+    }
+
+    private static Procedimento MapProcedimento(FbDataReader reader)
+    {
+        // Tenta ler NO_PROCEDIMENTO do BLOB primeiro (mais confiável para encoding)
+        // Se não houver BLOB, tenta o campo direto
+        string? noProcedimento = null;
+        
+        // Prioridade 1: Tenta ler do BLOB (CAST para BLOB garante acesso aos bytes brutos)
+        // O BLOB sempre retorna como byte[], então é mais confiável para conversão de encoding
+        try
+        {
+            var blobOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO_BLOB");
+            if (!reader.IsDBNull(blobOrdinal))
+            {
+                // Lê diretamente como byte[] do BLOB (mais confiável)
+                // O BLOB sempre retorna como byte[], então podemos converter diretamente
+                var blobValue = reader.GetValue(blobOrdinal);
+                if (blobValue is byte[] blobBytes && blobBytes.Length > 0)
+                {
+                    // Remove bytes nulos no final
+                    int validLength = blobBytes.Length;
+                    while (validLength > 0 && blobBytes[validLength - 1] == 0)
+                    {
+                        validLength--;
+                    }
+                    
+                    if (validLength > 0)
+                    {
+                        byte[] validBytes = new byte[validLength];
+                        Array.Copy(blobBytes, 0, validBytes, 0, validLength);
+                        // Converte diretamente para Windows-1252 (mais rápido e confiável)
+                        noProcedimento = ConvertBytesToWindows1252(validBytes);
+                        
+                        // Se a conversão resultou em caracteres corrompidos, tenta o helper
+                        if (!string.IsNullOrEmpty(noProcedimento) && 
+                            (noProcedimento.Contains('\uFFFD') || noProcedimento.Contains('?')))
+                        {
+                            noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO_BLOB");
+                        }
+                    }
+                }
+                
+                // Se não conseguiu ler como byte[], usa o helper
+                if (string.IsNullOrEmpty(noProcedimento))
+                {
+                noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO_BLOB");
+                }
             }
         }
         catch
         {
-            // Se não encontrar o campo direto, tenta BLOB
+            // Se não encontrar o BLOB, continua para campo direto
         }
         
-        // Se o campo direto não funcionou ou está vazio, tenta BLOB
+        // Prioridade 2: Se BLOB não funcionou ou está vazio, tenta campo direto
         if (string.IsNullOrEmpty(noProcedimento))
         {
             try
             {
-                var blobOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO_BLOB");
-                if (!reader.IsDBNull(blobOrdinal))
+                var campoOrdinal = reader.GetOrdinal("NO_PROCEDIMENTO");
+                if (!reader.IsDBNull(campoOrdinal))
                 {
-                    byte[]? blobBytes = null;
-                    
-                    // Tenta diferentes formas de obter os bytes do BLOB
-                    var blobValue = reader.GetValue(blobOrdinal);
-                    
-                    if (blobValue is byte[] bytes)
-                    {
-                        // Retornou diretamente como byte[]
-                        blobBytes = bytes;
-                    }
-                    else
-                    {
-                        // Tenta usar GetBytes para obter os bytes do BLOB
-                        try
-                        {
-                            // Primeiro obtém o tamanho do BLOB
-                            var length = reader.GetBytes(blobOrdinal, 0, null, 0, 0);
-                            if (length > 0)
-                            {
-                                blobBytes = new byte[(int)length];
-                                // Lê todos os bytes do BLOB
-                                var bytesRead = reader.GetBytes(blobOrdinal, 0, blobBytes, 0, (int)length);
-                                // Se leu menos bytes do que esperado, ajusta o tamanho
-                                if (bytesRead < length)
-                                {
-                                    var tempBytes = new byte[(int)bytesRead];
-                                    Array.Copy(blobBytes, 0, tempBytes, 0, (int)bytesRead);
-                                    blobBytes = tempBytes;
-                                }
-                            }
-                        }
-                        catch
-                        {
-                            // Se GetBytes falhar, tenta ler como string
-                            try
-                            {
-                                var blobString = reader.GetString(blobOrdinal);
-                                if (!string.IsNullOrEmpty(blobString))
-                                {
-                                    // Converte usando o helper
-                                    noProcedimento = ConvertBlobToString(blobString);
-                                }
-                            }
-                            catch
-                            {
-                                // Se tudo falhar, deixa null
-                            }
-                        }
-                    }
-                    
-                    // Se conseguiu obter bytes, converte para string usando Windows-1252
-                    if (blobBytes != null && blobBytes.Length > 0)
-                    {
-                        // Remove bytes nulos no final se houver
-                        int length = blobBytes.Length;
-                        while (length > 0 && blobBytes[length - 1] == 0)
-                        {
-                            length--;
-                        }
-                        
-                        if (length > 0)
-                        {
-                            // Cria array apenas com os bytes válidos
-                            byte[] validBytes = new byte[length];
-                            Array.Copy(blobBytes, 0, validBytes, 0, length);
-                            
-                            // Converte os bytes usando Windows-1252 (padrão para bancos brasileiros)
-                            try
-                            {
-                                var win1252 = System.Text.Encoding.GetEncoding(1252);
-                                noProcedimento = win1252.GetString(validBytes);
-                            }
-                            catch
-                            {
-                                // Se falhar Windows-1252, tenta Latin1
-                                try
-                                {
-                                    var latin1 = System.Text.Encoding.GetEncoding("ISO-8859-1");
-                                    noProcedimento = latin1.GetString(validBytes);
-                                }
-                                catch
-                                {
-                                    // Última tentativa: ASCII
-                                    noProcedimento = System.Text.Encoding.ASCII.GetString(validBytes);
-                                }
-                            }
-                        }
-                    }
+                    // Usa o helper que já trata encoding corretamente
+                    noProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "NO_PROCEDIMENTO");
                 }
             }
             catch
             {
-                // Se não conseguir ler o BLOB, deixa null
+                // Se não conseguir ler, deixa null
             }
         }
 
         return new Procedimento
         {
             CoProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "CO_PROCEDIMENTO") ?? string.Empty,
-            NoProcedimento = noProcedimento, // Usa apenas o valor do BLOB (ou null se não encontrou)
+            NoProcedimento = noProcedimento,
             TpComplexidade = FirebirdReaderHelper.GetStringSafe(reader, "TP_COMPLEXIDADE"),
             TpSexo = FirebirdReaderHelper.GetStringSafe(reader, "TP_SEXO"),
             QtMaximaExecucao = reader.IsDBNull(reader.GetOrdinal("QT_MAXIMA_EXECUCAO")) ? null : reader.GetInt32(reader.GetOrdinal("QT_MAXIMA_EXECUCAO")),
@@ -534,6 +524,8 @@ public class ProcedimentoRepository : IProcedimentoRepository
             VlSh = reader.IsDBNull(reader.GetOrdinal("VL_SH")) ? null : reader.GetDecimal(reader.GetOrdinal("VL_SH")),
             VlSa = reader.IsDBNull(reader.GetOrdinal("VL_SA")) ? null : reader.GetDecimal(reader.GetOrdinal("VL_SA")),
             VlSp = reader.IsDBNull(reader.GetOrdinal("VL_SP")) ? null : reader.GetDecimal(reader.GetOrdinal("VL_SP")),
+            VlTa = TryGetDecimal(reader, "VL_TA"),
+            VlTh = TryGetDecimal(reader, "VL_TH"),
             CoFinanciamento = FirebirdReaderHelper.GetStringSafe(reader, "CO_FINANCIAMENTO"),
             CoRubrica = FirebirdReaderHelper.GetStringSafe(reader, "CO_RUBRICA"),
             QtTempoPermanencia = reader.IsDBNull(reader.GetOrdinal("QT_TEMPO_PERMANENCIA")) ? null : reader.GetInt32(reader.GetOrdinal("QT_TEMPO_PERMANENCIA")),
@@ -541,61 +533,450 @@ public class ProcedimentoRepository : IProcedimentoRepository
         };
     }
 
-    /// <summary>
-    /// Converte uma string que veio de BLOB para o encoding correto (Windows-1252)
-    /// </summary>
-    private static string? ConvertBlobToString(string? value)
+    public async Task<IEnumerable<RelacionadoItem>> BuscarCID10RelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(value))
-            return value;
+        const string sql = @"
+            SELECT 
+                c.CO_CID,
+                CAST(c.NO_CID AS BLOB) AS NO_CID_BLOB,
+                c.NO_CID,
+                pc.ST_PRINCIPAL
+            FROM RL_PROCEDIMENTO_CID pc
+            INNER JOIN TB_CID c ON pc.CO_CID = c.CO_CID
+            WHERE pc.CO_PROCEDIMENTO = @coProcedimento
+              AND pc.DT_COMPETENCIA = @competencia
+            ORDER BY pc.ST_PRINCIPAL DESC, c.CO_CID";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
 
         try
         {
-            // Se não há caracteres especiais, retorna como está
-            if (!value.Any(c => c > 127))
-            {
-                return value;
-            }
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            var win1252 = System.Text.Encoding.GetEncoding(1252);
-            
-            // Tenta diferentes abordagens de conversão
-            // Abordagem 1: Latin1 preserva os bytes exatamente
-            try
+            while (await reader.ReadAsync(cancellationToken))
             {
-                var latin1 = System.Text.Encoding.GetEncoding("ISO-8859-1");
-                byte[] latin1Bytes = latin1.GetBytes(value);
-                string corrected = win1252.GetString(latin1Bytes);
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_CID") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_CID_BLOB", "NO_CID");
+                var principal = FirebirdReaderHelper.GetStringSafe(reader, "ST_PRINCIPAL");
                 
-                if (!corrected.Contains('?'))
+                itens.Add(new RelacionadoItem
                 {
-                    return corrected;
+                    Codigo = codigo,
+                    Descricao = descricao,
+                    InformacaoAdicional = principal == "S" ? "Principal" : null
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar CID10 relacionados ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarCompativeisRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                pr.CO_PROCEDIMENTO,
+                CAST(pr.NO_PROCEDIMENTO AS BLOB) AS NO_PROCEDIMENTO_BLOB,
+                pr.NO_PROCEDIMENTO
+            FROM RL_PROCEDIMENTO_COMPATIVEL pc
+            INNER JOIN TB_PROCEDIMENTO pr ON pc.CO_PROCEDIMENTO_COMPATIVEL = pr.CO_PROCEDIMENTO
+            WHERE pc.CO_PROCEDIMENTO_PRINCIPAL = @coProcedimento
+              AND pc.DT_COMPETENCIA = @competencia
+              AND pr.DT_COMPETENCIA = @competencia
+            ORDER BY pr.CO_PROCEDIMENTO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_PROCEDIMENTO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_PROCEDIMENTO_BLOB", "NO_PROCEDIMENTO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar procedimentos compatíveis relacionados ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarHabilitacoesRelacionadasAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                h.CO_HABILITACAO,
+                CAST(h.NO_HABILITACAO AS BLOB) AS NO_HABILITACAO_BLOB,
+                h.NO_HABILITACAO,
+                ph.NU_GRUPO_HABILITACAO
+            FROM RL_PROCEDIMENTO_HABILITACAO ph
+            INNER JOIN TB_HABILITACAO h ON ph.CO_HABILITACAO = h.CO_HABILITACAO
+            WHERE ph.CO_PROCEDIMENTO = @coProcedimento
+              AND ph.DT_COMPETENCIA = @competencia
+              AND h.DT_COMPETENCIA = @competencia
+            ORDER BY h.CO_HABILITACAO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_HABILITACAO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_HABILITACAO_BLOB", "NO_HABILITACAO");
+                var grupo = FirebirdReaderHelper.GetStringSafe(reader, "NU_GRUPO_HABILITACAO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao,
+                    InformacaoAdicional = !string.IsNullOrEmpty(grupo) ? $"Grupo: {grupo}" : null
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar habilitações relacionadas ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarCBOsRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                o.CO_OCUPACAO,
+                CAST(o.NO_OCUPACAO AS BLOB) AS NO_OCUPACAO_BLOB,
+                o.NO_OCUPACAO
+            FROM RL_PROCEDIMENTO_OCUPACAO po
+            INNER JOIN TB_OCUPACAO o ON po.CO_OCUPACAO = o.CO_OCUPACAO
+            WHERE po.CO_PROCEDIMENTO = @coProcedimento
+              AND po.DT_COMPETENCIA = @competencia
+            ORDER BY o.CO_OCUPACAO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_OCUPACAO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_OCUPACAO_BLOB", "NO_OCUPACAO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar CBOs relacionados ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                s.CO_SERVICO,
+                CAST(s.NO_SERVICO AS BLOB) AS NO_SERVICO_BLOB,
+                s.NO_SERVICO,
+                ps.CO_CLASSIFICACAO
+            FROM RL_PROCEDIMENTO_SERVICO ps
+            INNER JOIN TB_SERVICO s ON ps.CO_SERVICO = s.CO_SERVICO
+            WHERE ps.CO_PROCEDIMENTO = @coProcedimento
+              AND ps.DT_COMPETENCIA = @competencia
+              AND s.DT_COMPETENCIA = @competencia
+            ORDER BY s.CO_SERVICO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SERVICO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_SERVICO_BLOB", "NO_SERVICO");
+                var classificacao = FirebirdReaderHelper.GetStringSafe(reader, "CO_CLASSIFICACAO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao,
+                    InformacaoAdicional = !string.IsNullOrEmpty(classificacao) ? $"Classificação: {classificacao}" : null
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar serviços relacionados ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarTiposLeitoRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                tl.CO_TIPO_LEITO,
+                CAST(tl.NO_TIPO_LEITO AS BLOB) AS NO_TIPO_LEITO_BLOB,
+                tl.NO_TIPO_LEITO
+            FROM RL_PROCEDIMENTO_LEITO pl
+            INNER JOIN TB_TIPO_LEITO tl ON pl.CO_TIPO_LEITO = tl.CO_TIPO_LEITO
+            WHERE pl.CO_PROCEDIMENTO = @coProcedimento
+              AND pl.DT_COMPETENCIA = @competencia
+              AND tl.DT_COMPETENCIA = @competencia
+            ORDER BY tl.CO_TIPO_LEITO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_TIPO_LEITO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_TIPO_LEITO_BLOB", "NO_TIPO_LEITO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar tipos de leito relacionados ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarModalidadesRelacionadasAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                m.CO_MODALIDADE,
+                CAST(m.NO_MODALIDADE AS BLOB) AS NO_MODALIDADE_BLOB,
+                m.NO_MODALIDADE
+            FROM RL_PROCEDIMENTO_MODALIDADE pm
+            INNER JOIN TB_MODALIDADE m ON pm.CO_MODALIDADE = m.CO_MODALIDADE
+            WHERE pm.CO_PROCEDIMENTO = @coProcedimento
+              AND pm.DT_COMPETENCIA = @competencia
+              AND m.DT_COMPETENCIA = @competencia
+            ORDER BY m.CO_MODALIDADE";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_MODALIDADE") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_MODALIDADE_BLOB", "NO_MODALIDADE");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar modalidades relacionadas ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarDescricaoRelacionadaAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                d.CO_PROCEDIMENTO,
+                CAST(d.DS_PROCEDIMENTO AS BLOB) AS DS_PROCEDIMENTO_BLOB,
+                d.DS_PROCEDIMENTO
+            FROM TB_DESCRICAO d
+            WHERE d.CO_PROCEDIMENTO = @coProcedimento
+              AND d.DT_COMPETENCIA = @competencia";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_PROCEDIMENTO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "DS_PROCEDIMENTO_BLOB", "DS_PROCEDIMENTO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar descrição relacionada ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    private static string? LerCampoTextoDoBlob(FbDataReader reader, string blobColumnName, string directColumnName)
+    {
+        string? resultado = null;
+        
+        // Prioridade 1: Tenta ler do BLOB
+        try
+        {
+            var blobOrdinal = reader.GetOrdinal(blobColumnName);
+            if (!reader.IsDBNull(blobOrdinal))
+            {
+                var blobValue = reader.GetValue(blobOrdinal);
+                if (blobValue is byte[] blobBytes && blobBytes.Length > 0)
+                {
+                    int validLength = blobBytes.Length;
+                    while (validLength > 0 && blobBytes[validLength - 1] == 0)
+                    {
+                        validLength--;
+                    }
+                    
+                    if (validLength > 0)
+                    {
+                        byte[] validBytes = new byte[validLength];
+                        Array.Copy(blobBytes, 0, validBytes, 0, validLength);
+                        resultado = ConvertBytesToWindows1252(validBytes);
+                        
+                        if (!string.IsNullOrEmpty(resultado) && 
+                            (resultado.Contains('\uFFFD') || resultado.Contains('?')))
+                        {
+                            resultado = FirebirdReaderHelper.GetStringSafe(reader, blobColumnName);
+                        }
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(resultado))
+                {
+                    resultado = FirebirdReaderHelper.GetStringSafe(reader, blobColumnName);
                 }
             }
-            catch { }
-            
-            // Abordagem 2: Encoding padrão do sistema
-            try
-            {
-                var defaultEncoding = System.Text.Encoding.Default;
-                byte[] defaultBytes = defaultEncoding.GetBytes(value);
-                string corrected = win1252.GetString(defaultBytes);
-                
-                if (!corrected.Contains('?'))
-                {
-                    return corrected;
-                }
-            }
-            catch { }
-            
-            // Se nada funcionou, retorna original
-            return value;
         }
         catch
         {
-            return value;
+            // Se não encontrar o BLOB, continua para campo direto
         }
+        
+        // Prioridade 2: Se BLOB não funcionou, tenta campo direto
+        if (string.IsNullOrEmpty(resultado))
+        {
+            try
+            {
+                var campoOrdinal = reader.GetOrdinal(directColumnName);
+                if (!reader.IsDBNull(campoOrdinal))
+                {
+                    resultado = FirebirdReaderHelper.GetStringSafe(reader, directColumnName);
+                }
+            }
+            catch
+            {
+                // Se não conseguir ler, deixa null
+            }
+        }
+        
+        return resultado;
     }
+
 
 }
 

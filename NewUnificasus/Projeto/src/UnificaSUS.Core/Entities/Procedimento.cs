@@ -17,6 +17,8 @@ public class Procedimento
     public decimal? VlSh { get; set; }
     public decimal? VlSa { get; set; }
     public decimal? VlSp { get; set; }
+    public decimal? VlTa { get; set; }
+    public decimal? VlTh { get; set; }
     public string? CoFinanciamento { get; set; }
     public string? CoRubrica { get; set; }
     public int? QtTempoPermanencia { get; set; }

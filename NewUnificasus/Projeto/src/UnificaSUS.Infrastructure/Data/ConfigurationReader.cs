@@ -103,7 +103,9 @@ public class ConfigurationReader : IConfigurationReader
         }
         
         // Constrói a string de conexão Firebird
-        // Usa NONE e fazemos a conversão manualmente no código para evitar erro de charset
+        // Tenta usar NONE primeiro para evitar erro "Invalid character set" em servidores remotos
+        // O FirebirdReaderHelper fará a conversão manual de encoding
+        // Se o servidor suportar WIN1252, pode ser alterado depois
         return $"Database={databasePath};" +
                $"User={DefaultUser};" +
                $"Password={DefaultPassword};" +

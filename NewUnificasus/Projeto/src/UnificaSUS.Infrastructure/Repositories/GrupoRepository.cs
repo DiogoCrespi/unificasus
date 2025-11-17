@@ -1,5 +1,6 @@
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Extensions.Logging;
+using System.Text;
 using UnificaSUS.Core.Entities;
 using UnificaSUS.Core.Interfaces;
 using UnificaSUS.Infrastructure.Data;
@@ -24,9 +25,11 @@ public class GrupoRepository : IGrupoRepository
     public async Task<IEnumerable<Grupo>> BuscarTodosAsync(string competencia, CancellationToken cancellationToken = default)
     {
         // Otimizado: carrega tudo em uma única transação e faz cache dos sub-grupos
+        // Usa CAST para BLOB nos campos de texto para garantir acesso aos bytes brutos
         const string sqlGrupos = @"
             SELECT 
                 CO_GRUPO,
+                CAST(NO_GRUPO AS BLOB) AS NO_GRUPO_BLOB,
                 NO_GRUPO,
                 DT_COMPETENCIA
             FROM TB_GRUPO
@@ -39,6 +42,7 @@ public class GrupoRepository : IGrupoRepository
         {
             await _context.OpenAsync(cancellationToken);
 
+            // Operações de leitura não precisam de transação explícita no Firebird
             // Primeiro, carrega todos os grupos
             using var command = new FbCommand(sqlGrupos, _context.Connection);
             command.Parameters.AddWithValue("@competencia", competencia);
@@ -51,7 +55,7 @@ public class GrupoRepository : IGrupoRepository
                 var grupo = new Grupo
                 {
                     CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
-                    NoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "NO_GRUPO"),
+                    NoGrupo = LerCampoTextoDoBlob(reader, "NO_GRUPO_BLOB", "NO_GRUPO"),
                     DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
                 };
                 gruposList.Add(grupo);
@@ -105,9 +109,11 @@ public class GrupoRepository : IGrupoRepository
 
     public async Task<Grupo?> BuscarPorCodigoAsync(string codigo, string competencia, CancellationToken cancellationToken = default)
     {
+        // Usa CAST para BLOB nos campos de texto para garantir acesso aos bytes brutos
         const string sql = @"
             SELECT 
                 CO_GRUPO,
+                CAST(NO_GRUPO AS BLOB) AS NO_GRUPO_BLOB,
                 NO_GRUPO,
                 DT_COMPETENCIA
             FROM TB_GRUPO
@@ -116,32 +122,26 @@ public class GrupoRepository : IGrupoRepository
 
         await _context.OpenAsync(cancellationToken);
 
+        // Operações de leitura não precisam de transação explícita no Firebird
         using var command = new FbCommand(sql, _context.Connection);
         command.Parameters.AddWithValue("@codigo", codigo);
         command.Parameters.AddWithValue("@competencia", competencia);
 
-        try
-        {
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            if (await reader.ReadAsync(cancellationToken))
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            var grupo = new Grupo
             {
-                var grupo = new Grupo
-                {
-                    CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
-                    NoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "NO_GRUPO"),
-                    DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
-                };
+                CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
+                NoGrupo = LerCampoTextoDoBlob(reader, "NO_GRUPO_BLOB", "NO_GRUPO"),
+                DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
+            };
 
-                grupo.SubGrupos = await BuscarSubGruposAsync(grupo.CoGrupo, competencia, CancellationToken.None);
-                
-                return grupo;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao buscar grupo {Codigo} por competência {Competencia}", codigo, competencia);
-            throw;
+            // Busca sub-grupos
+            grupo.SubGrupos = await BuscarSubGruposAsync(grupo.CoGrupo, competencia, cancellationToken);
+            
+            return grupo;
         }
 
         return null;
@@ -149,10 +149,12 @@ public class GrupoRepository : IGrupoRepository
 
     private async Task<List<SubGrupo>> BuscarSubGruposAsync(string coGrupo, string competencia, CancellationToken cancellationToken)
     {
+        // Usa CAST para BLOB nos campos de texto para garantir acesso aos bytes brutos
         const string sql = @"
             SELECT 
                 CO_GRUPO,
                 CO_SUB_GRUPO,
+                CAST(NO_SUB_GRUPO AS BLOB) AS NO_SUB_GRUPO_BLOB,
                 NO_SUB_GRUPO,
                 DT_COMPETENCIA
             FROM TB_SUB_GRUPO
@@ -162,38 +164,31 @@ public class GrupoRepository : IGrupoRepository
 
         var subGrupos = new List<SubGrupo>();
 
+        // Operações de leitura não precisam de transação explícita no Firebird
         using var command = new FbCommand(sql, _context.Connection);
         command.Parameters.AddWithValue("@coGrupo", coGrupo);
         command.Parameters.AddWithValue("@competencia", competencia);
 
-        try
-        {
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            while (await reader.ReadAsync(cancellationToken))
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var subGrupo = new SubGrupo
             {
-                var subGrupo = new SubGrupo
-                {
-                    CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
-                    CoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SUB_GRUPO") ?? string.Empty,
-                    NoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "NO_SUB_GRUPO"),
-                    DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
-                };
+                CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
+                CoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SUB_GRUPO") ?? string.Empty,
+                NoSubGrupo = LerCampoTextoDoBlob(reader, "NO_SUB_GRUPO_BLOB", "NO_SUB_GRUPO"),
+                DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
+            };
 
-                // Carregar formas de organização
-                subGrupo.FormasOrganizacao = await BuscarFormasOrganizacaoAsync(
-                    subGrupo.CoGrupo, 
-                    subGrupo.CoSubGrupo, 
-                    competencia, 
-                    cancellationToken);
+            // Carregar formas de organização
+            subGrupo.FormasOrganizacao = await BuscarFormasOrganizacaoAsync(
+                subGrupo.CoGrupo, 
+                subGrupo.CoSubGrupo, 
+                competencia, 
+                cancellationToken);
 
-                subGrupos.Add(subGrupo);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao buscar sub-grupos do grupo {CoGrupo}", coGrupo);
-            throw;
+            subGrupos.Add(subGrupo);
         }
 
         return subGrupos;
@@ -217,10 +212,12 @@ public class GrupoRepository : IGrupoRepository
             parametros.Add($"@grupo{i}");
         }
 
+        // Usa CAST para BLOB nos campos de texto para garantir acesso aos bytes brutos
         var sql = $@"
             SELECT 
                 CO_GRUPO,
                 CO_SUB_GRUPO,
+                CAST(NO_SUB_GRUPO AS BLOB) AS NO_SUB_GRUPO_BLOB,
                 NO_SUB_GRUPO,
                 DT_COMPETENCIA
             FROM TB_SUB_GRUPO
@@ -230,6 +227,7 @@ public class GrupoRepository : IGrupoRepository
 
         var resultado = new Dictionary<string, List<SubGrupo>>();
 
+        // Operações de leitura não precisam de transação explícita no Firebird
         using var command = new FbCommand(sql, _context.Connection);
         command.Parameters.AddWithValue("@competencia", competencia);
         
@@ -238,48 +236,40 @@ public class GrupoRepository : IGrupoRepository
             command.Parameters.AddWithValue($"@grupo{i}", coGrupos[i]);
         }
 
-        try
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
         {
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-            while (await reader.ReadAsync(cancellationToken))
+            var coGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty;
+            
+            if (!resultado.ContainsKey(coGrupo))
             {
-                var coGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty;
-                
-                if (!resultado.ContainsKey(coGrupo))
-                {
-                    resultado[coGrupo] = new List<SubGrupo>();
-                }
-
-                var subGrupo = new SubGrupo
-                {
-                    CoGrupo = coGrupo,
-                    CoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SUB_GRUPO") ?? string.Empty,
-                    NoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "NO_SUB_GRUPO"),
-                    DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
-                };
-
-                resultado[coGrupo].Add(subGrupo);
+                resultado[coGrupo] = new List<SubGrupo>();
             }
 
-            // Carrega formas de organização para todos os sub-grupos (em batch)
-            foreach (var grupoKey in resultado.Keys.ToList())
+            var subGrupo = new SubGrupo
             {
-                var subGrupos = resultado[grupoKey];
-                foreach (var subGrupo in subGrupos)
-                {
-                    subGrupo.FormasOrganizacao = await BuscarFormasOrganizacaoAsync(
-                        subGrupo.CoGrupo,
-                        subGrupo.CoSubGrupo,
-                        competencia,
-                        cancellationToken);
-                }
-            }
+                CoGrupo = coGrupo,
+                CoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SUB_GRUPO") ?? string.Empty,
+                NoSubGrupo = LerCampoTextoDoBlob(reader, "NO_SUB_GRUPO_BLOB", "NO_SUB_GRUPO"),
+                DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
+            };
+
+            resultado[coGrupo].Add(subGrupo);
         }
-        catch (Exception ex)
+
+        // Carrega formas de organização para todos os sub-grupos (em batch)
+        foreach (var grupoKey in resultado.Keys.ToList())
         {
-            _logger.LogError(ex, "Erro ao buscar sub-grupos em batch");
-            throw;
+            var subGrupos = resultado[grupoKey];
+            foreach (var subGrupo in subGrupos)
+            {
+                subGrupo.FormasOrganizacao = await BuscarFormasOrganizacaoAsync(
+                    subGrupo.CoGrupo,
+                    subGrupo.CoSubGrupo,
+                    competencia,
+                    cancellationToken);
+            }
         }
 
         return resultado;
@@ -291,11 +281,13 @@ public class GrupoRepository : IGrupoRepository
         string competencia, 
         CancellationToken cancellationToken)
     {
+        // Usa CAST para BLOB nos campos de texto para garantir acesso aos bytes brutos
         const string sql = @"
             SELECT 
                 CO_GRUPO,
                 CO_SUB_GRUPO,
                 CO_FORMA_ORGANIZACAO,
+                CAST(NO_FORMA_ORGANIZACAO AS BLOB) AS NO_FORMA_ORGANIZACAO_BLOB,
                 NO_FORMA_ORGANIZACAO,
                 DT_COMPETENCIA
             FROM TB_FORMA_ORGANIZACAO
@@ -306,34 +298,129 @@ public class GrupoRepository : IGrupoRepository
 
         var formas = new List<FormaOrganizacao>();
 
+        // Operações de leitura não precisam de transação explícita no Firebird
         using var command = new FbCommand(sql, _context.Connection);
         command.Parameters.AddWithValue("@coGrupo", coGrupo);
         command.Parameters.AddWithValue("@coSubGrupo", coSubGrupo);
         command.Parameters.AddWithValue("@competencia", competencia);
 
-        try
-        {
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                formas.Add(new FormaOrganizacao
-                {
-                    CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
-                    CoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SUB_GRUPO") ?? string.Empty,
-                    CoFormaOrganizacao = FirebirdReaderHelper.GetStringSafe(reader, "CO_FORMA_ORGANIZACAO") ?? string.Empty,
-                    NoFormaOrganizacao = FirebirdReaderHelper.GetStringSafe(reader, "NO_FORMA_ORGANIZACAO"),
-                    DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
-                });
-            }
-        }
-        catch (Exception ex)
+        while (await reader.ReadAsync(cancellationToken))
         {
-            _logger.LogError(ex, "Erro ao buscar formas de organização do grupo {CoGrupo} sub-grupo {CoSubGrupo}", coGrupo, coSubGrupo);
-            throw;
+            formas.Add(new FormaOrganizacao
+            {
+                CoGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_GRUPO") ?? string.Empty,
+                CoSubGrupo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SUB_GRUPO") ?? string.Empty,
+                CoFormaOrganizacao = FirebirdReaderHelper.GetStringSafe(reader, "CO_FORMA_ORGANIZACAO") ?? string.Empty,
+                NoFormaOrganizacao = LerCampoTextoDoBlob(reader, "NO_FORMA_ORGANIZACAO_BLOB", "NO_FORMA_ORGANIZACAO"),
+                DtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA")
+            });
         }
 
         return formas;
+    }
+
+    /// <summary>
+    /// Lê um campo de texto do BLOB primeiro, depois do campo direto se necessário
+    /// Garante conversão correta de encoding para acentuação
+    /// </summary>
+    private static string? LerCampoTextoDoBlob(FbDataReader reader, string blobColumnName, string directColumnName)
+    {
+        string? resultado = null;
+        
+        // Prioridade 1: Tenta ler do BLOB (CAST para BLOB garante acesso aos bytes brutos)
+        try
+        {
+            var blobOrdinal = reader.GetOrdinal(blobColumnName);
+            if (!reader.IsDBNull(blobOrdinal))
+            {
+                // Lê diretamente como byte[] do BLOB (mais confiável)
+                var blobValue = reader.GetValue(blobOrdinal);
+                if (blobValue is byte[] blobBytes && blobBytes.Length > 0)
+                {
+                    // Remove bytes nulos no final
+                    int validLength = blobBytes.Length;
+                    while (validLength > 0 && blobBytes[validLength - 1] == 0)
+                    {
+                        validLength--;
+                    }
+                    
+                    if (validLength > 0)
+                    {
+                        byte[] validBytes = new byte[validLength];
+                        Array.Copy(blobBytes, 0, validBytes, 0, validLength);
+                        // Converte diretamente para Windows-1252
+                        resultado = ConvertBytesToWindows1252(validBytes);
+                        
+                        // Se a conversão resultou em caracteres corrompidos, tenta o helper
+                        if (!string.IsNullOrEmpty(resultado) && 
+                            (resultado.Contains('\uFFFD') || resultado.Contains('?')))
+                        {
+                            resultado = FirebirdReaderHelper.GetStringSafe(reader, blobColumnName);
+                        }
+                    }
+                }
+                
+                // Se não conseguiu ler como byte[], usa o helper
+                if (string.IsNullOrEmpty(resultado))
+                {
+                    resultado = FirebirdReaderHelper.GetStringSafe(reader, blobColumnName);
+                }
+            }
+        }
+        catch
+        {
+            // Se não encontrar o BLOB, continua para campo direto
+        }
+        
+        // Prioridade 2: Se BLOB não funcionou ou está vazio, tenta campo direto
+        if (string.IsNullOrEmpty(resultado))
+        {
+            try
+            {
+                var campoOrdinal = reader.GetOrdinal(directColumnName);
+                if (!reader.IsDBNull(campoOrdinal))
+                {
+                    resultado = FirebirdReaderHelper.GetStringSafe(reader, directColumnName);
+                }
+            }
+            catch
+            {
+                // Se não conseguir ler, deixa null
+            }
+        }
+        
+        return resultado;
+    }
+
+    /// <summary>
+    /// Converte bytes diretamente para Windows-1252 (helper local)
+    /// </summary>
+    private static string ConvertBytesToWindows1252(byte[] bytes)
+    {
+        if (bytes == null || bytes.Length == 0)
+            return string.Empty;
+
+        try
+        {
+            var encoding = Encoding.GetEncoding(1252); // Windows-1252
+            return encoding.GetString(bytes);
+        }
+        catch
+        {
+            // Se falhar, tenta Latin1
+            try
+            {
+                var encoding = Encoding.GetEncoding("ISO-8859-1");
+                return encoding.GetString(bytes);
+            }
+            catch
+            {
+                // Último recurso: usa encoding padrão
+                return Encoding.Default.GetString(bytes);
+            }
+        }
     }
 }
 

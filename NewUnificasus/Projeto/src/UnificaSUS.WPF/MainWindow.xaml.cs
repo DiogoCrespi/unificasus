@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
@@ -92,6 +93,12 @@ public partial class MainWindow : Window
         
         // Inicializar Collections
         ProcedimentosDataGrid.ItemsSource = _procedimentos;
+        
+        // Configurar altura automática das linhas do DataGrid
+        ProcedimentosDataGrid.LoadingRow += (s, e) =>
+        {
+            e.Row.Height = double.NaN; // Auto height
+        };
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -374,6 +381,52 @@ public partial class MainWindow : Window
         if (ProcedimentosDataGrid.SelectedItem is Procedimento procedimento)
         {
             CarregarDetalhesProcedimento(procedimento);
+            AtualizarNomeSubmenu(procedimento);
+        }
+        else
+        {
+            SubmenuHeaderTextBlock.Text = "Nenhum procedimento selecionado";
+        }
+    }
+
+    private void AtualizarNomeSubmenu(Procedimento procedimento)
+    {
+        try
+        {
+            // O código do procedimento tem a estrutura: AABBCCDDDD
+            // AA = Grupo (posições 1-2)
+            // BB = SubGrupo (posições 3-4) - este é o "submenu"
+            // CC = FormaOrganizacao (posições 5-6)
+            // DDDD = Código específico
+            
+            if (string.IsNullOrEmpty(procedimento.CoProcedimento) || procedimento.CoProcedimento.Length < 4)
+            {
+                SubmenuHeaderTextBlock.Text = "Código de procedimento inválido";
+                return;
+            }
+
+            var coGrupo = procedimento.CoProcedimento.Substring(0, 2);
+            var coSubGrupo = procedimento.CoProcedimento.Substring(2, 2);
+
+            // Busca o nome do subgrupo na estrutura já carregada
+            var grupo = _grupos.FirstOrDefault(g => g.CoGrupo == coGrupo);
+            if (grupo != null)
+            {
+                var subGrupo = grupo.SubGrupos.FirstOrDefault(sg => sg.CoSubGrupo == coSubGrupo);
+                if (subGrupo != null && !string.IsNullOrEmpty(subGrupo.NoSubGrupo))
+                {
+                    SubmenuHeaderTextBlock.Text = $"{coGrupo}{coSubGrupo} - {subGrupo.NoSubGrupo}";
+                    return;
+                }
+            }
+
+            // Se não encontrou, mostra apenas o código
+            SubmenuHeaderTextBlock.Text = $"SubGrupo: {coGrupo}{coSubGrupo}";
+        }
+        catch (Exception ex)
+        {
+            SubmenuHeaderTextBlock.Text = "Erro ao carregar submenu";
+            System.Diagnostics.Debug.WriteLine($"Erro ao atualizar nome do submenu: {ex.Message}");
         }
     }
 
@@ -383,35 +436,128 @@ public partial class MainWindow : Window
         TxtValorSA.Text = procedimento.VlSa?.ToString("C", new System.Globalization.CultureInfo("pt-BR")) ?? "R$ 0,00";
         TxtValorSH.Text = procedimento.VlSh?.ToString("C", new System.Globalization.CultureInfo("pt-BR")) ?? "R$ 0,00";
         TxtValorSP.Text = procedimento.VlSp?.ToString("C", new System.Globalization.CultureInfo("pt-BR")) ?? "R$ 0,00";
+        
+        // Total Ambulatorial (T.A.) = VL_SA + VL_SP (se VL_TA não existir no banco)
+        // Total Hospitalar (T.H.) = VL_SH + VL_SP (se VL_TH não existir no banco)
+        var totalAmbulatorial = procedimento.VlTa ?? (procedimento.VlSa ?? 0) + (procedimento.VlSp ?? 0);
+        var totalHospitalar = procedimento.VlTh ?? (procedimento.VlSh ?? 0) + (procedimento.VlSp ?? 0);
+        
+        TxtValorTA.Text = totalAmbulatorial.ToString("C", new System.Globalization.CultureInfo("pt-BR"));
+        TxtValorTH.Text = totalHospitalar.ToString("C", new System.Globalization.CultureInfo("pt-BR"));
         TxtPontos.Text = procedimento.QtPontos?.ToString() ?? "0";
         TxtPermanencia.Text = procedimento.QtDiasPermanencia?.ToString() ?? "";
         TxtIdMin.Text = procedimento.VlIdadeMinima?.ToString() ?? "";
         TxtIdMax.Text = procedimento.VlIdadeMaxima?.ToString() ?? "";
         
-        // Sexo
+        // Sexo - sempre exibir por extenso
         var sexo = procedimento.TpSexo?.Trim()?.ToUpper();
         TxtSexo.Text = sexo switch
         {
             "M" => "Masculino",
             "F" => "Feminino",
-            "I" => "Indiferente",
+            "I" => "Ambos",
+            "N" => "Não se aplica",
             "" or null => "Não se aplica",
             _ => sexo ?? "Não se aplica"
         };
         
-        TxtTempoPermanencia.Text = procedimento.QtTempoPermanencia?.ToString() ?? "9999";
-        TxtFinanciamento.Text = procedimento.Financiamento?.NoFinanciamento ?? procedimento.CoFinanciamento ?? "";
+        TxtTempoPermanencia.Text = procedimento.QtTempoPermanencia?.ToString() ?? "";
         
-        // Complexidade
-        var complexidade = procedimento.TpComplexidade?.Trim()?.ToUpper();
+        // Tipo de Financiamento - sempre exibir por extenso
+        var financiamento = procedimento.Financiamento?.NoFinanciamento?.Trim() ?? procedimento.CoFinanciamento?.Trim()?.ToUpper() ?? "";
+        TxtFinanciamento.Text = financiamento switch
+        {
+            // Códigos numéricos comuns do SUS
+            "01" => "ATENÇÃO BÁSICA (PAB)",
+            "02" => "MÉDIA COMPLEXIDADE",
+            "03" => "ALTA COMPLEXIDADE",
+            "04" => "VIGILÂNCIA EM SAÚDE",
+            "05" => "ASSISTÊNCIA FARMACÊUTICA",
+            "06" => "MÉDIA E ALTA COMPLEXIDADE (MAC)",
+            "07" => "VIGILÂNCIA EM SAÚDE",
+            "08" => "FUNDO DE AÇÕES ESTRATÉGICAS E COMPENSAÇÃO (FAEC)",
+            "09" => "VIGILÂNCIA SANITÁRIA",
+            "10" => "ATENÇÃO BÁSICA FIXA",
+            "11" => "ATENÇÃO BÁSICA VARIÁVEL",
+            "12" => "ATENÇÃO BÁSICA ESPECIAL",
+            "13" => "MÉDIA COMPLEXIDADE AMBULATORIAL",
+            "14" => "MÉDIA COMPLEXIDADE HOSPITALAR",
+            "15" => "ALTA COMPLEXIDADE AMBULATORIAL",
+            "16" => "ALTA COMPLEXIDADE HOSPITALAR",
+            "17" => "URGÊNCIA E EMERGÊNCIA",
+            "18" => "ATENÇÃO DOMICILIAR",
+            "19" => "ATENÇÃO PSICOSSOCIAL",
+            "20" => "ATENÇÃO ONCOLÓGICA",
+            // Códigos alfanuméricos
+            "OI" => "ORÇAMENTO IMPLÍCITO",
+            "OE" => "ORÇAMENTO EXPLÍCITO",
+            "PAB" => "ATENÇÃO BÁSICA (PAB)",
+            "MAC" => "MÉDIA COMPLEXIDADE",
+            "AC" => "ALTA COMPLEXIDADE",
+            "" or null => "Não se aplica",
+            _ => !string.IsNullOrEmpty(procedimento.Financiamento?.NoFinanciamento) 
+                ? procedimento.Financiamento.NoFinanciamento 
+                : financiamento
+        };
+        
+        // Complexidade - sempre exibir por extenso
+        // Baseado na classificação oficial do SUS (Sistema Único de Saúde)
+        // IMPORTANTE: TP_COMPLEXIDADE trabalha APENAS COM NÚMEROS (0, 1, 2, 3)
+        // Mapeamento correto identificado:
+        // [1] = Atenção Básica
+        // [2] = Média Complexidade
+        var complexidade = procedimento.TpComplexidade?.Trim();
+        
+        // Se complexidade for null ou vazio, retorna imediatamente
+        if (string.IsNullOrEmpty(complexidade))
+        {
+            TxtComplexidade.Text = "Não se aplica";
+            return;
+        }
+        
+        // Mapeamento baseado nos valores reais do banco
         TxtComplexidade.Text = complexidade switch
         {
-            "AB" => "Atenção Básica",
-            "AP" => "Atenção Primária",
-            "AM" => "Atenção Média",
-            "AA" => "Atenção Alta",
-            "" or null => "Não se aplica",
-            _ => complexidade ?? "Não se aplica"
+            // ============================================
+            // VALORES NUMÉRICOS (baseado no banco real)
+            // ============================================
+            // 0 = Complexidade 0 = (verificar se existe)
+            "0" => "ATENÇÃO BÁSICA",
+            "00" => "ATENÇÃO BÁSICA",
+            // 1 = Atenção Básica (CORRIGIDO - era Média Complexidade)
+            "1" => "ATENÇÃO BÁSICA",
+            "01" => "ATENÇÃO BÁSICA",
+            // 2 = Média Complexidade (CORRETO)
+            "2" => "MÉDIA COMPLEXIDADE",
+            "02" => "MÉDIA COMPLEXIDADE",
+            // 3 = Alta Complexidade
+            "3" => "ALTA COMPLEXIDADE",
+            "03" => "ALTA COMPLEXIDADE",
+            
+            // ============================================
+            // CÓDIGOS ALFANUMÉRICOS (caso apareçam)
+            // ============================================
+            "A" => "ATENÇÃO BÁSICA",
+            "B" => "ATENÇÃO BÁSICA",
+            "M" => "MÉDIA COMPLEXIDADE",
+            "H" => "ALTA COMPLEXIDADE",
+            "AB" => "ATENÇÃO BÁSICA",
+            "AP" => "ATENÇÃO PRIMÁRIA",
+            "AM" => "MÉDIA COMPLEXIDADE",
+            "AA" => "ALTA COMPLEXIDADE",
+            "AC" => "ALTA COMPLEXIDADE",
+            "MC" => "MÉDIA COMPLEXIDADE",
+            "BC" => "ATENÇÃO BÁSICA",
+            "BASICA" => "ATENÇÃO BÁSICA",
+            "BAIXA" => "ATENÇÃO BÁSICA",
+            "PRIMARIA" => "ATENÇÃO PRIMÁRIA",
+            "MEDIA" => "MÉDIA COMPLEXIDADE",
+            "ALTA" => "ALTA COMPLEXIDADE",
+            
+            // ============================================
+            // FALLBACK: Se não reconhecer, mostra o valor original para debug
+            // ============================================
+            _ => $"Complexidade: {complexidade}"
         };
     }
 
@@ -463,6 +609,10 @@ public partial class MainWindow : Window
     private void NavPrevious_Click(object sender, RoutedEventArgs e)
     {
         // Navegar para registro anterior
+        if (ProcedimentosDataGrid.SelectedIndex > 0)
+        {
+            ProcedimentosDataGrid.SelectedIndex--;
+        }
     }
 
     private void NavFirst_Click(object sender, RoutedEventArgs e)
@@ -602,5 +752,264 @@ public partial class MainWindow : Window
         // Ordenação já é feita automaticamente pelo DataGrid
         // Este evento é apenas para garantir que funciona
         e.Handled = false;
+    }
+
+    private async void BuscarRelacionados_Click(object sender, RoutedEventArgs e)
+    {
+        // Verifica se há um procedimento selecionado
+        if (ProcedimentosDataGrid.SelectedItem is not Procedimento procedimentoSelecionado)
+        {
+            MessageBox.Show("Por favor, selecione um procedimento primeiro.", 
+                          "Aviso", 
+                          MessageBoxButton.OK, 
+                          MessageBoxImage.Information);
+            return;
+        }
+
+        // Verifica se há uma competência ativa
+        if (string.IsNullOrEmpty(_competenciaAtiva))
+        {
+            MessageBox.Show("Nenhuma competência ativa. Por favor, ative uma competência primeiro.", 
+                          "Aviso", 
+                          MessageBoxButton.OK, 
+                          MessageBoxImage.Information);
+            return;
+        }
+
+        // Obtém o filtro selecionado
+        if (FiltrosComboBox.SelectedItem is not ComboBoxItem itemSelecionado)
+        {
+            MessageBox.Show("Por favor, selecione um tipo de filtro.", 
+                          "Aviso", 
+                          MessageBoxButton.OK, 
+                          MessageBoxImage.Information);
+            return;
+        }
+
+        var filtroSelecionado = itemSelecionado.Content?.ToString() ?? string.Empty;
+
+        try
+        {
+            StatusTextBlock.Text = $"Buscando {filtroSelecionado} relacionados...";
+            
+            IEnumerable<RelacionadoItem> relacionados;
+
+            // Busca os relacionados baseado no filtro selecionado
+            switch (filtroSelecionado)
+            {
+                case "Cid10":
+                    relacionados = await _procedimentoService.BuscarCID10RelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Compatíveis":
+                    relacionados = await _procedimentoService.BuscarCompativeisRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Habilitação":
+                    relacionados = await _procedimentoService.BuscarHabilitacoesRelacionadasAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "CBO":
+                    relacionados = await _procedimentoService.BuscarCBOsRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Serviços":
+                    relacionados = await _procedimentoService.BuscarServicosRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Tipo de Leito":
+                    relacionados = await _procedimentoService.BuscarTiposLeitoRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Modalidade":
+                    relacionados = await _procedimentoService.BuscarModalidadesRelacionadasAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Descrição":
+                    relacionados = await _procedimentoService.BuscarDescricaoRelacionadaAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Instrumento de Registro":
+                case "Detalhes":
+                case "Incremento":
+                    MessageBox.Show($"Funcionalidade '{filtroSelecionado}' ainda não implementada.", 
+                                  "Aviso", 
+                                  MessageBoxButton.OK, 
+                                  MessageBoxImage.Information);
+                    StatusTextBlock.Text = "Pronto";
+                    return;
+                default:
+                    MessageBox.Show($"Filtro '{filtroSelecionado}' não reconhecido.", 
+                                  "Erro", 
+                                  MessageBoxButton.OK, 
+                                  MessageBoxImage.Error);
+                    StatusTextBlock.Text = "Pronto";
+                    return;
+            }
+
+            // Exibe os resultados em uma janela
+            ExibirRelacionados(relacionados, filtroSelecionado, procedimentoSelecionado.CoProcedimento);
+            
+            StatusTextBlock.Text = $"Encontrados {relacionados.Count()} registro(s) de {filtroSelecionado}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao buscar relacionados:\n\n{ex.Message}", 
+                          "Erro", 
+                          MessageBoxButton.OK, 
+                          MessageBoxImage.Error);
+            StatusTextBlock.Text = "Erro ao buscar relacionados";
+        }
+    }
+
+    private void ExibirRelacionados(IEnumerable<RelacionadoItem> relacionados, string tipoFiltro, string coProcedimento)
+    {
+        // Para "Descrição", usa uma janela maior com TextBox expansível
+        bool isDescricao = tipoFiltro == "Descrição";
+        
+        var dialog = new Window
+        {
+            Title = $"{tipoFiltro} relacionados ao procedimento {coProcedimento}",
+            Width = isDescricao ? 900 : 700,
+            Height = isDescricao ? 600 : 500,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this
+        };
+
+        var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // Título
+        var titulo = new TextBlock
+        {
+            Text = $"{tipoFiltro} relacionados ao procedimento {coProcedimento}",
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(10)
+        };
+        Grid.SetRow(titulo, 0);
+        grid.Children.Add(titulo);
+
+        // Botão de fechar (criado antes para poder ser referenciado)
+        var btnFechar = new Button
+        {
+            Content = "Fechar",
+            Width = 100,
+            Height = 30,
+            Margin = new Thickness(10),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        btnFechar.Click += (s, e) => dialog.Close();
+
+        // Se for Descrição e houver registros, usa TextBox expansível
+        if (isDescricao && relacionados.Any())
+        {
+            var primeiroItem = relacionados.First();
+            
+            // Ajusta as linhas do grid para acomodar o TextBox
+            grid.RowDefinitions[1] = new RowDefinition { Height = GridLength.Auto };
+            grid.RowDefinitions.Insert(2, new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            
+            // Label do código do procedimento
+            var labelCodigo = new Label
+            {
+                Content = $"Código do Procedimento: {primeiroItem.Codigo}",
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(10, 5, 10, 5)
+            };
+            Grid.SetRow(labelCodigo, 1);
+            grid.Children.Add(labelCodigo);
+            
+            // TextBox expansível com scroll para a descrição
+            var textBoxDescricao = new TextBox
+            {
+                Text = primeiroItem.Descricao ?? "Nenhuma descrição disponível.",
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Margin = new Thickness(10, 5, 10, 5),
+                FontSize = 12,
+                AcceptsReturn = true,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            Grid.SetRow(textBoxDescricao, 2);
+            grid.Children.Add(textBoxDescricao);
+            
+            // Botão na linha 3
+            Grid.SetRow(btnFechar, 3);
+            grid.Children.Add(btnFechar);
+        }
+        else
+        {
+            // DataGrid para exibir os resultados (modo normal)
+            var dataGrid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                IsReadOnly = true,
+                GridLinesVisibility = DataGridGridLinesVisibility.All,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                Margin = new Thickness(10, 5, 10, 5)
+            };
+
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Código",
+                Binding = new System.Windows.Data.Binding("Codigo"),
+                Width = 150
+            });
+
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Descrição",
+                Binding = new System.Windows.Data.Binding("Descricao"),
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+            });
+
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Informação Adicional",
+                Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
+                Width = 200
+            });
+
+            dataGrid.ItemsSource = relacionados.ToList();
+            Grid.SetRow(dataGrid, 1);
+            grid.Children.Add(dataGrid);
+            
+            // Botão na linha 2
+            Grid.SetRow(btnFechar, 2);
+            grid.Children.Add(btnFechar);
+        }
+
+        // Mensagem se não houver registros
+        if (!relacionados.Any())
+        {
+            var mensagem = new TextBlock
+            {
+                Text = "NENHUM REGISTRO ENCONTRADO.",
+                FontSize = 16,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red)
+            };
+            Grid.SetRow(mensagem, 1);
+            grid.Children.Add(mensagem);
+            
+            // Garante que o botão está visível mesmo sem registros
+            if (!grid.Children.Contains(btnFechar))
+            {
+                Grid.SetRow(btnFechar, 2);
+                grid.Children.Add(btnFechar);
+            }
+        }
+
+        dialog.Content = grid;
+        dialog.ShowDialog();
     }
 }
