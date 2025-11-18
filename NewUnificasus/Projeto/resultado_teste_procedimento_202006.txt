@@ -1,0 +1,63 @@
+﻿
+CODIGO_PROCEDIMENTO NO_PROCEDIMENTO_BLOB NOME_PROCEDIMENTO                                                                                                                                                                                                                                                         VALOR_SP COMPETENCIA 
+=================== ==================== =============================================================================== ======================= =========== 
+0301100012                           0:1 ADMINISTRACAO DE MEDICAMENTOS NA ATENCAO ESPECIALIZADA.                                                                                                                                                                                                         0.0000000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+
+
+CODIGO_PROCEDIMENTO NO_PROCEDIMENTO_BLOB NOME_PROCEDIMENTO                                                                                                                                                                                                                                                         VALOR_SP COMPETENCIA 
+=================== ==================== =============================================================================== ======================= =========== 
+0301010145                           0:2 PRIMEIRA CONSULTA DE PEDIATRIA AO RECEM-NASCIDO                                                                                                                                                                                                                  10.00000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0301050074                           0:3 INTERNAÃ├O DOMICILIAR                                                                                                                                                                                                                                            5.100000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0301060010                           0:4 DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA PEDIATRICA                                                                                                                                                                                                   11.62000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0301060070                           0:5 DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA CIRURGICA                                                                                                                                                                                                    9.910000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0301060088                           0:6 DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA MEDICA                                                                                                                                                                                                       10.88000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0301090017                           0:7 ATENDIMENTO EM GERIATRIA (1 TURNO)                                                                                                                                                                                                                               4.860000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0301090025                           0:8 ATENDIMENTO EM GERIATRIA (2 TURNOS)                                                                                                                                                                                                                              5.000000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0303010010                           0:9 TRATAMENTO DE DENGUE CL┴SSICA                                                                                                                                                                                                                                    58.32000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0303010029                           0:a TRATAMENTO DE DENGUE HEMORR┴GICA                                                                                                                                                                                                                                 56.36000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0303010037                           0:b TRATAMENTO DE OUTRAS DOENÃAS BACTERIANAS                                                                                                                                                                                                                         72.22000000000000 202006      
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+

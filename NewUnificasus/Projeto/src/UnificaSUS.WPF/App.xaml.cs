@@ -32,12 +32,14 @@ public partial class App : System.Windows.Application
                     services.AddScoped<ICompetenciaRepository, CompetenciaRepository>();
                     services.AddScoped<IGrupoRepository, GrupoRepository>();
                     services.AddScoped<IProcedimentoComumRepository, ProcedimentoComumRepository>();
+                    services.AddScoped<IRelatorioRepository, RelatorioRepository>();
 
                     // Application Services
                     services.AddScoped<ApplicationService.ProcedimentoService>();
                     services.AddScoped<ApplicationService.CompetenciaService>();
                     services.AddScoped<ApplicationService.GrupoService>();
                     services.AddScoped<ApplicationService.ProcedimentoComumService>();
+                    services.AddScoped<ApplicationService.RelatorioService>();
 
                     // UI - MainWindow precisa de IConfigurationReader
                     services.AddTransient<MainWindow>();

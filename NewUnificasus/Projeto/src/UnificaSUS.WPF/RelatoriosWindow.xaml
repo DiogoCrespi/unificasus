@@ -1,0 +1,124 @@
+<Window x:Class="UnificaSUS.WPF.RelatoriosWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Relatórios de Procedimentos" 
+        Height="650" Width="900"
+        WindowStartupLocation="CenterOwner"
+        Background="LightGray">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Seção Superior: Seleção de Filtro -->
+        <GroupBox Grid.Row="0" Header="Selecionar por:" Margin="0,0,0,10" Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Radio Buttons para tipo de filtro -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,10,10">
+                    <RadioButton x:Name="RbGrupo" Content="Grupo" IsChecked="True" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                    <RadioButton x:Name="RbSubGrupo" Content="Sub-grupo" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                    <RadioButton x:Name="RbFormaOrganizacao" Content="Forma de organização" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                    <RadioButton x:Name="RbProcedimento" Content="Procedimento" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                </StackPanel>
+
+                <!-- ComboBox editável com lista de todos os itens -->
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,0,10,0">
+                    <ComboBox x:Name="ComboBoxItens" 
+                             Width="300" 
+                             Margin="0,0,5,0"
+                             IsEditable="True"
+                             TextBoxBase.TextChanged="ComboBoxItens_TextChanged"
+                             SelectionChanged="ComboBoxItens_SelectionChanged"
+                             KeyDown="ComboBoxItens_KeyDown"
+                             ToolTip="Digite ou selecione um item da lista"/>
+                    <Button Content="→" Width="30" Height="25" Click="BtnAdicionar_Click" Background="Red" Foreground="White" FontWeight="Bold" ToolTip="Adicionar item à lista de impressão"/>
+                </StackPanel>
+
+                <!-- ListBox de itens selecionados -->
+                <GroupBox Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" Header="Imprimir a seleção abaixo:" Padding="5">
+                    <ListBox x:Name="ListBoxItensSelecionados" MinHeight="100" MaxHeight="150" ToolTip="Lista de itens selecionados para impressão"/>
+                </GroupBox>
+            </Grid>
+        </GroupBox>
+
+        <!-- Seção Intermediária: Ações e Configurações -->
+        <GroupBox Grid.Row="1" Header="Configurações do Relatório" Margin="0,0,0,10" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Título do relatório -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <Label Content="Título do relatório:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBox x:Name="TxtTituloRelatorio" Width="300" Text="Relatório de Procedimentos" ToolTip="Título que aparecerá no relatório"/>
+                </StackPanel>
+
+                <!-- Checkbox Não Imprimir SP zerado -->
+                <CheckBox x:Name="ChkNaoImprimirSPZerado" 
+                         Grid.Row="1" Grid.Column="0"
+                         Content="Não Imprimir procedimentos com SP zerado" 
+                         Margin="0,0,0,10"
+                         ToolTip="Se marcado, exclui procedimentos com Valor S.P. = 0 do relatório"/>
+
+                <!-- Botões Limpar e Imprimir -->
+                <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Right">
+                    <Button x:Name="BtnLimpar" Content="Limpar" Width="100" Height="30" Margin="0,0,0,5" Click="BtnLimpar_Click" ToolTip="Remove todos os itens da lista"/>
+                    <Button x:Name="BtnImprimir" Content="Imprimir" Width="100" Height="30" Click="BtnImprimir_Click" Background="LightBlue" ToolTip="Gera e imprime o relatório"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- Seção Inferior: Modelo e Ordenação -->
+        <GroupBox Grid.Row="2" Header="Opções de Relatório" Margin="0,0,0,10" Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Modelo do relatório -->
+                <GroupBox Grid.Column="0" Header="Modelo do relatório:" Padding="5" Margin="0,0,5,0">
+                    <RadioButton x:Name="RbModeloCodigoNomeValorSP" Content="Código, nome e valor do SP" IsChecked="True" ToolTip="Exibe código, nome e valor do Serviço Profissional"/>
+                </GroupBox>
+
+                <!-- Ordenar por -->
+                <GroupBox Grid.Column="1" Header="Ordenar por:" Padding="5" Margin="5,0,0,0">
+                    <StackPanel>
+                        <RadioButton x:Name="RbOrdenarPorCodigo" Content="Código Procedimento" IsChecked="True" Margin="0,2" ToolTip="Ordena por código do procedimento"/>
+                        <RadioButton x:Name="RbOrdenarPorNome" Content="Nome" Margin="0,2" ToolTip="Ordena por nome do procedimento"/>
+                        <RadioButton x:Name="RbOrdenarPorValorSP" Content="Valor do SP" Margin="0,2" ToolTip="Ordena por valor do Serviço Profissional (decrescente)"/>
+                    </StackPanel>
+                </GroupBox>
+            </Grid>
+        </GroupBox>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="3" VerticalAlignment="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusTextBlock" Text="Pronto"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
+

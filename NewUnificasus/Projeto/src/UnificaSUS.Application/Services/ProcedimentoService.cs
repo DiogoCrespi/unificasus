@@ -55,6 +55,24 @@ public class ProcedimentoService
     }
 
     /// <summary>
+    /// Busca múltiplos procedimentos por uma lista de códigos
+    /// </summary>
+    public async Task<IEnumerable<Procedimento>> BuscarPorCodigosAsync(IEnumerable<string> codigos, string competencia, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Buscando {Quantidade} procedimento(s) por códigos na competência: {Competencia}", codigos.Count(), competencia);
+        
+        try
+        {
+            return await _repository.BuscarPorCodigosAsync(codigos, competencia, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar procedimentos por códigos na competência {Competencia}", competencia);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Busca procedimentos por filtro
     /// </summary>
     public async Task<IEnumerable<Procedimento>> BuscarPorFiltroAsync(string filtro, string competencia, CancellationToken cancellationToken = default)

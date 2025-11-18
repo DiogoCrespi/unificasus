@@ -136,6 +136,88 @@ public class ProcedimentoRepository : IProcedimentoRepository
         return null;
     }
 
+    public async Task<IEnumerable<Procedimento>> BuscarPorCodigosAsync(IEnumerable<string> codigos, string competencia, CancellationToken cancellationToken = default)
+    {
+        var codigosList = codigos.Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
+        
+        if (!codigosList.Any())
+        {
+            return Enumerable.Empty<Procedimento>();
+        }
+
+        var procedimentos = new List<Procedimento>();
+
+        await _context.OpenAsync(cancellationToken);
+
+        // Firebird tem limite de parâmetros, então vamos processar em lotes de 100
+        const int batchSize = 100;
+        
+        for (int i = 0; i < codigosList.Count; i += batchSize)
+        {
+            var batch = codigosList.Skip(i).Take(batchSize).ToList();
+            
+            var sql = @"
+                SELECT 
+                    pr.CO_PROCEDIMENTO,
+                    CAST(pr.NO_PROCEDIMENTO AS BLOB) AS NO_PROCEDIMENTO_BLOB,
+                    pr.NO_PROCEDIMENTO,
+                    pr.TP_COMPLEXIDADE,
+                    pr.TP_SEXO,
+                    pr.QT_MAXIMA_EXECUCAO,
+                    pr.QT_DIAS_PERMANENCIA,
+                    pr.QT_PONTOS,
+                    pr.VL_IDADE_MINIMA,
+                    pr.VL_IDADE_MAXIMA,
+                    pr.VL_SH,
+                    pr.VL_SA,
+                    pr.VL_SP,
+                    pr.CO_FINANCIAMENTO,
+                    pr.CO_RUBRICA,
+                    pr.QT_TEMPO_PERMANENCIA,
+                    pr.DT_COMPETENCIA
+                FROM TB_PROCEDIMENTO pr
+                WHERE pr.DT_COMPETENCIA = @competencia
+                  AND pr.CO_PROCEDIMENTO IN (";
+
+            var paramNames = new List<string>();
+            using var command = new FbCommand();
+            command.Connection = _context.Connection;
+            
+            for (int j = 0; j < batch.Count; j++)
+            {
+                var paramName = $"@codigo{j}";
+                paramNames.Add(paramName);
+                command.Parameters.AddWithValue(paramName, batch[j]);
+            }
+
+            sql += string.Join(", ", paramNames) + ")";
+
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@competencia", competencia);
+
+            try
+            {
+                using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    var procedimento = MapProcedimento(reader);
+                    if (procedimento != null)
+                    {
+                        procedimentos.Add(procedimento);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao buscar procedimentos por códigos na competência {Competencia}", competencia);
+                // Continua processando os próximos lotes mesmo se um falhar
+            }
+        }
+
+        return procedimentos;
+    }
+
     public async Task<IEnumerable<Procedimento>> BuscarPorFiltroAsync(string filtro, string competencia, CancellationToken cancellationToken = default)
     {
         // Otimizado: usa LIKE com % apenas no final quando possível (mais rápido que CONTAINING)

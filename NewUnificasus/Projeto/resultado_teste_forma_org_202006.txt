@@ -1,0 +1,14 @@
+﻿
+  TOTAL_PROCEDIMENTOS TOTAL_COM_SP_MAIOR_ZERO   TOTAL_COM_SP_ZERADO 
+===================== ======================= ===================== 
+                    3                       0                     3 
+
+
+CODIGO_SUBGRUPO CODIGO_FORMA_ORG CODIGO_COMPLETO_FORMA_ORG   TOTAL_PROCEDIMENTOS 
+=============== ================ ========================= ===================== 
+0101            01               010101                                        3 
+0101            02               010102                                        9 
+0101            03               010103                                        2 
+0101            04               010104                                        5 
+0101            05               010105                                       13 
+

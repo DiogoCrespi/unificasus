@@ -1,0 +1,49 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO     TAMANHO PERMITE_NULL 
+=============================== =============================== ======== ======= ============ 
+INDICE                          RDB$69                          INTEGER        4 N??O         
+CO_GRUPO                        RDB$70                          VARCHAR        2 SIM          
+DT_COMPETENCIA                  RDB$71                          VARCHAR        6 SIM          
+NO_GRUPO                        RDB$72                          VARCHAR      100 SIM          
+
+
+CAMPO                           TIPO_ORIGEM                     TIPO     TAMANHO PERMITE_NULL 
+=============================== =============================== ======== ======= ============ 
+INDICE                          RDB$73                          INTEGER        4 N??O         
+CO_FORMA_ORGANIZACAO            RDB$74                          VARCHAR        2 SIM          
+CO_GRUPO                        RDB$75                          VARCHAR        2 SIM          
+CO_SUB_GRUPO                    RDB$76                          VARCHAR        2 SIM          
+DT_COMPETENCIA                  RDB$77                          VARCHAR        6 SIM          
+NO_FORMA_ORGANIZACAO            RDB$78                          VARCHAR      100 SIM          
+
+
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO PERMITE_NULL 
+=============================== =============================== ================ ======= ============ 
+CO_PROCEDIMENTO                 RDB$40                          VARCHAR               10 SIM          
+DT_COMPETENCIA                  RDB$42                          VARCHAR                6 SIM          
+NO_PROCEDIMENTO                 RDB$43                          VARCHAR              250 SIM          
+VL_SP                           RDB$53                          DOUBLE PRECISION       8 SIM          
+
+isql.exe : Statement failed, SQLSTATE = 42S22
+No C:\Users\Usuario\AppData\Local\Temp\ps-script-c8da522e-9cc6-482a-8558-342eecb781e0.ps1:75 caractere:447
++ ... ; $result = & $IsqlPath -user $User -password $Password $DatabasePath ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Statement failed, SQLSTATE = 42S22:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Dynamic SQL Error
+-SQL error code = -206
+-Column unknown
+-CO_GRUPO
+-At line 3, column 7
+After line 88 in file C:\Users\Usuario\AppData\Local\Temp\tmp607F.tmp
+Statement failed, SQLSTATE = 42000
+Dynamic SQL Error
+-SQL error code = -104
+-Name longer than database column size
+After line 94 in file C:\Users\Usuario\AppData\Local\Temp\tmp607F.tmp
+Statement failed, SQLSTATE = 42000
+Dynamic SQL Error
+-SQL error code = -104
+-Name longer than database column size
+After line 99 in file C:\Users\Usuario\AppData\Local\Temp\tmp607F.tmp

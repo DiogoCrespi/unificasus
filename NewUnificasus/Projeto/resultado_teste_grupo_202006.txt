@@ -1,0 +1,17 @@
+﻿
+  TOTAL_PROCEDIMENTOS TOTAL_COM_SP_MAIOR_ZERO   TOTAL_COM_SP_ZERADO 
+===================== ======================= ===================== 
+                   91                       0                    91 
+
+
+CODIGO_GRUPO   TOTAL_PROCEDIMENTOS 
+============ ===================== 
+01                              91 
+02                            1039 
+03                             753 
+04                            1681 
+05                             135 
+06                             367 
+07                             529 
+08                              46 
+

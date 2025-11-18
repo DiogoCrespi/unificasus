@@ -1,0 +1,14 @@
+-- Script para testar busca de grupos na competência 202006
+SELECT 
+    g.CO_GRUPO AS CODIGO,
+    CAST(g.NO_GRUPO AS BLOB) AS NO_GRUPO_BLOB,
+    g.NO_GRUPO AS NOME
+FROM TB_GRUPO g
+WHERE g.DT_COMPETENCIA = '202006'
+ORDER BY g.CO_GRUPO;
+
+-- Contar total de grupos
+SELECT COUNT(*) AS TOTAL_GRUPOS
+FROM TB_GRUPO g
+WHERE g.DT_COMPETENCIA = '202006';
+

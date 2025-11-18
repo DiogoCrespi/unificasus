@@ -19,11 +19,13 @@ public partial class MainWindow : Window
     private readonly ApplicationService.CompetenciaService _competenciaService;
     private readonly ApplicationService.GrupoService _grupoService;
     private readonly ApplicationService.ProcedimentoComumService _procedimentoComumService;
+    private readonly ApplicationService.RelatorioService _relatorioService;
     private readonly IConfigurationReader _configurationReader;
     
     private string _competenciaAtiva = string.Empty;
     private ObservableCollection<Grupo> _grupos = new();
     private ObservableCollection<Procedimento> _procedimentos = new();
+    private List<ProcedimentoComum> _procedimentosComunsCache = new();
     private string _databasePath = "local";
 
     // Converter AAAAMM para MM/YYYY
@@ -66,6 +68,7 @@ public partial class MainWindow : Window
         ApplicationService.CompetenciaService competenciaService,
         ApplicationService.GrupoService grupoService,
         ApplicationService.ProcedimentoComumService procedimentoComumService,
+        ApplicationService.RelatorioService relatorioService,
         IConfigurationReader configurationReader)
     {
         InitializeComponent();
@@ -74,6 +77,7 @@ public partial class MainWindow : Window
         _competenciaService = competenciaService;
         _grupoService = grupoService;
         _procedimentoComumService = procedimentoComumService;
+        _relatorioService = relatorioService;
         _configurationReader = configurationReader;
         
         // Obter caminho do banco para título
@@ -100,11 +104,11 @@ public partial class MainWindow : Window
         // Inicializar Collections
         ProcedimentosDataGrid.ItemsSource = _procedimentos;
         
-        // Configurar altura automática das linhas do DataGrid
-        ProcedimentosDataGrid.LoadingRow += (s, e) =>
-        {
-            e.Row.Height = double.NaN; // Auto height
-        };
+        // Configurar altura automática das linhas do DataGrid e tooltip
+        ProcedimentosDataGrid.LoadingRow += ProcedimentosDataGrid_LoadingRow;
+        
+        // Configurar menu de contexto (botão direito)
+        ProcedimentosDataGrid.ContextMenuOpening += ProcedimentosDataGrid_ContextMenuOpening;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -121,6 +125,10 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(_competenciaAtiva))
             {
                 await CarregarGruposAsync();
+                
+                // Carregar procedimentos comuns automaticamente
+                await CarregarProcedimentosComunsAsync();
+                
                 // Não carrega procedimentos automaticamente - só quando o usuário selecionar
                 StatusTextBlock.Text = "Selecione uma categoria para ver os procedimentos";
             }
@@ -248,6 +256,65 @@ public partial class MainWindow : Window
                           MessageBoxButton.OK, 
                           MessageBoxImage.Error);
         }
+    }
+
+    private async Task CarregarProcedimentosComunsAsync()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_competenciaAtiva))
+            {
+                return;
+            }
+
+            // Buscar todos os procedimentos comuns e atualizar cache
+            var procedimentosComuns = await _procedimentoComumService.BuscarTodosAsync();
+            _procedimentosComunsCache = procedimentosComuns.ToList();
+            
+            if (!procedimentosComuns.Any())
+            {
+                // Se não há procedimentos comuns, não faz nada
+                return;
+            }
+
+            // Limpar lista de procedimentos
+            _procedimentos.Clear();
+
+            // Extrair códigos dos procedimentos comuns
+            var codigos = procedimentosComuns
+                .Where(p => !string.IsNullOrEmpty(p.PrcCodProc))
+                .Select(p => p.PrcCodProc!)
+                .ToList();
+
+            if (codigos.Any())
+            {
+                // Buscar todos os procedimentos de uma vez (mais eficiente)
+                var procedimentosEncontrados = await _procedimentoService.BuscarPorCodigosAsync(
+                    codigos, 
+                    _competenciaAtiva);
+
+                foreach (var procedimento in procedimentosEncontrados)
+                {
+                    _procedimentos.Add(procedimento);
+                }
+            }
+
+            // Atualizar DataGrid
+            ProcedimentosDataGrid.ItemsSource = _procedimentos;
+            
+            // Atualizar status
+            StatusTextBlock.Text = $"Carregados {_procedimentos.Count} procedimento(s) comum(ns)";
+        }
+        catch (Exception ex)
+        {
+            // Não mostrar erro para o usuário, apenas logar
+            System.Diagnostics.Debug.WriteLine($"Erro ao carregar procedimentos comuns: {ex.Message}");
+        }
+    }
+    
+    private ProcedimentoComum? BuscarProcedimentoComumPorCodigo(string codigoProcedimento)
+    {
+        return _procedimentosComunsCache.FirstOrDefault(p => p.PrcCodProc == codigoProcedimento);
     }
 
     private async void CategoriasTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -433,6 +500,119 @@ public partial class MainWindow : Window
         {
             SubmenuHeaderTextBlock.Text = "Erro ao carregar submenu";
             System.Diagnostics.Debug.WriteLine($"Erro ao atualizar nome do submenu: {ex.Message}");
+        }
+    }
+
+    private void ProcedimentosDataGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
+    {
+        // Configurar altura automática das linhas
+        e.Row.Height = double.NaN; // Auto height
+        
+        // Configurar tooltip na linha com observação se existir e mostrar estrela se for comum
+        if (e.Row.Item is Procedimento procedimento)
+        {
+            var procComum = BuscarProcedimentoComumPorCodigo(procedimento.CoProcedimento);
+            
+            // Configurar tooltip com observação se existir
+            if (procComum != null && !string.IsNullOrWhiteSpace(procComum.PrcObservacoes))
+            {
+                e.Row.ToolTip = $"Observação: {procComum.PrcObservacoes}";
+            }
+            else
+            {
+                e.Row.ToolTip = null;
+            }
+            
+        }
+    }
+    
+    private void EstrelaTextBlock_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBlock textBlock)
+        {
+            // Encontrar o DataContext (Procedimento) através da árvore visual
+            var parent = textBlock.Parent;
+            Procedimento? procedimento = null;
+            
+            // Navegar pela árvore visual para encontrar o DataContext do procedimento
+            while (parent != null)
+            {
+                if (parent is DataGridCell cell && cell.DataContext is Procedimento proc)
+                {
+                    procedimento = proc;
+                    break;
+                }
+                if (parent is DataGridRow row && row.DataContext is Procedimento proc2)
+                {
+                    procedimento = proc2;
+                    break;
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            
+            if (procedimento != null)
+            {
+                var procComum = BuscarProcedimentoComumPorCodigo(procedimento.CoProcedimento);
+                
+                if (procComum != null)
+                {
+                    // Procedimento comum - estrela dourada e visível
+                    textBlock.Visibility = Visibility.Visible;
+                    textBlock.Foreground = new SolidColorBrush(Colors.Gold);
+                    textBlock.ToolTip = "Procedimento comum - Clique para remover ou botão direito para gerenciar";
+                }
+                else
+                {
+                    // Procedimento não comum - estrela cinza clara e visível
+                    textBlock.Visibility = Visibility.Visible;
+                    textBlock.Foreground = new SolidColorBrush(Colors.LightGray);
+                    textBlock.ToolTip = "Clique para adicionar aos procedimentos comuns";
+                }
+            }
+        }
+    }
+    
+    private async void EstrelaTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true; // Prevenir seleção da linha
+        
+        if (sender is TextBlock textBlock)
+        {
+            // Encontrar o DataContext (Procedimento) através da árvore visual
+            var parent = textBlock.Parent;
+            Procedimento? procedimento = null;
+            
+            // Navegar pela árvore visual para encontrar o DataContext do procedimento
+            while (parent != null)
+            {
+                if (parent is DataGridCell cell && cell.DataContext is Procedimento proc)
+                {
+                    procedimento = proc;
+                    break;
+                }
+                if (parent is DataGridRow row && row.DataContext is Procedimento proc2)
+                {
+                    procedimento = proc2;
+                    break;
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            
+            if (procedimento != null)
+            {
+                var procComum = BuscarProcedimentoComumPorCodigo(procedimento.CoProcedimento);
+                
+                if (procComum != null)
+                {
+                    // Se já é comum, remover
+                    await RemoverProcedimentoComumDoContextMenuAsync(procComum);
+                }
+                else
+                {
+                    // Se não é comum, adicionar
+                    await AdicionarProcedimentoComumDoContextMenuAsync(procedimento);
+                }
+            }
         }
     }
 
@@ -733,9 +913,61 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }
 
-    private void ExibirComuns_Click(object sender, RoutedEventArgs e)
+    private async void ExibirComuns_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show("Funcionalidade em desenvolvimento", "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+        try
+        {
+            if (string.IsNullOrEmpty(_competenciaAtiva))
+            {
+                MessageBox.Show("Por favor, selecione e ative uma competência antes de exibir procedimentos comuns.", 
+                              "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Buscar todos os procedimentos comuns e atualizar cache
+            var procedimentosComuns = await _procedimentoComumService.BuscarTodosAsync();
+            _procedimentosComunsCache = procedimentosComuns.ToList();
+            
+            if (!procedimentosComuns.Any())
+            {
+                MessageBox.Show("Não há procedimentos comuns cadastrados.", 
+                              "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Limpar lista de procedimentos
+            _procedimentos.Clear();
+
+            // Extrair códigos dos procedimentos comuns
+            var codigos = procedimentosComuns
+                .Where(p => !string.IsNullOrEmpty(p.PrcCodProc))
+                .Select(p => p.PrcCodProc!)
+                .ToList();
+
+            if (codigos.Any())
+            {
+                // Buscar todos os procedimentos de uma vez (mais eficiente)
+                var procedimentosEncontrados = await _procedimentoService.BuscarPorCodigosAsync(
+                    codigos, 
+                    _competenciaAtiva);
+
+                foreach (var procedimento in procedimentosEncontrados)
+                {
+                    _procedimentos.Add(procedimento);
+                }
+            }
+
+            // Atualizar DataGrid
+            ProcedimentosDataGrid.ItemsSource = _procedimentos;
+            
+            // Atualizar status
+            StatusTextBlock.Text = $"Carregados {_procedimentos.Count} procedimento(s) comum(ns)";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao carregar procedimentos comuns:\n{ex.Message}", 
+                          "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void Importar_Click(object sender, RoutedEventArgs e)
@@ -745,7 +977,33 @@ public partial class MainWindow : Window
 
     private void Relatorios_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show("Funcionalidade em desenvolvimento", "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+        try
+        {
+            if (string.IsNullOrEmpty(_competenciaAtiva))
+            {
+                MessageBox.Show("Por favor, selecione e ative uma competência antes de gerar relatórios.", 
+                              "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (_relatorioService == null)
+            {
+                MessageBox.Show("Erro: Serviço de relatórios não foi inicializado corretamente.", 
+                              "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var relatoriosWindow = new RelatoriosWindow(_relatorioService, _competenciaAtiva)
+            {
+                Owner = this
+            };
+            relatoriosWindow.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao abrir janela de relatórios:\n{ex.Message}\n\nDetalhes:\n{ex.StackTrace}", 
+                          "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async void ProcComuns_Click(object sender, RoutedEventArgs e)
@@ -944,6 +1202,12 @@ public partial class MainWindow : Window
                         {
                             await _procedimentoComumService.RemoverAsync(selecionado.PrcCod);
                             
+                            // Atualizar cache
+                            _procedimentosComunsCache.Remove(selecionado);
+                            
+                            // Atualizar DataGrid principal para remover a estrela
+                            ProcedimentosDataGrid.Items.Refresh();
+                            
                             // Recarregar lista
                             var atualizados = await _procedimentoComumService.BuscarTodosAsync();
                             dataGrid.ItemsSource = atualizados;
@@ -973,6 +1237,368 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Erro ao carregar procedimentos comuns:\n{ex.Message}", 
+                          "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    private async void ProcedimentosDataGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not DataGrid dataGrid)
+        {
+            return;
+        }
+
+        // Verificar se há um procedimento selecionado
+        if (dataGrid.SelectedItem is not Procedimento procedimento)
+        {
+            e.Handled = true; // Não mostrar menu se não há seleção
+            return;
+        }
+
+        // Criar menu de contexto
+        var contextMenu = new ContextMenu();
+
+        // Verificar se o procedimento está nos procedimentos comuns
+        var procComum = BuscarProcedimentoComumPorCodigo(procedimento.CoProcedimento);
+
+        if (procComum == null)
+        {
+            // Procedimento NÃO está nos comuns - mostrar opção para adicionar
+            var menuItemAdicionar = new MenuItem
+            {
+                Header = "Adicionar aos Procedimentos Comuns"
+            };
+            menuItemAdicionar.Click += async (s, args) =>
+            {
+                await AdicionarProcedimentoComumDoContextMenuAsync(procedimento);
+            };
+            contextMenu.Items.Add(menuItemAdicionar);
+        }
+        else
+        {
+            // Procedimento JÁ está nos comuns - mostrar opções para remover e editar observação
+            var menuItemRemover = new MenuItem
+            {
+                Header = "Remover dos Procedimentos Comuns"
+            };
+            menuItemRemover.Click += async (s, args) =>
+            {
+                await RemoverProcedimentoComumDoContextMenuAsync(procComum);
+            };
+            contextMenu.Items.Add(menuItemRemover);
+
+            var menuItemSeparador1 = new Separator();
+            contextMenu.Items.Add(menuItemSeparador1);
+
+            var menuItemEditarObs = new MenuItem
+            {
+                Header = "Adicionar/Editar Observação"
+            };
+            menuItemEditarObs.Click += async (s, args) =>
+            {
+                await EditarObservacaoProcedimentoComumAsync(procComum);
+            };
+            contextMenu.Items.Add(menuItemEditarObs);
+
+            // Se tiver observação, mostrar no final do menu
+            if (!string.IsNullOrWhiteSpace(procComum.PrcObservacoes))
+            {
+                var menuItemSeparador2 = new Separator();
+                contextMenu.Items.Add(menuItemSeparador2);
+
+                var menuItemObs = new MenuItem
+                {
+                    Header = $"Observação: {procComum.PrcObservacoes}",
+                    IsEnabled = false,
+                    FontStyle = FontStyles.Italic
+                };
+                contextMenu.Items.Add(menuItemObs);
+            }
+        }
+
+        dataGrid.ContextMenu = contextMenu;
+    }
+    
+    private async Task AdicionarProcedimentoComumDoContextMenuAsync(Procedimento procedimento)
+    {
+        try
+        {
+            // Verificar se já existe
+            var existente = await _procedimentoComumService.BuscarPorCodigoProcedimentoAsync(procedimento.CoProcedimento);
+            if (existente != null)
+            {
+                MessageBox.Show("Este procedimento já está na lista de procedimentos comuns.", 
+                              "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Criar diálogo para adicionar observações
+            var dialog = new Window
+            {
+                Title = "Adicionar Procedimento Comum",
+                Width = 500,
+                Height = 300,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this
+            };
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Informações do procedimento
+            var labelProc = new Label
+            {
+                Content = $"Procedimento: {procedimento.CoProcedimento} - {procedimento.NoProcedimento}",
+                Margin = new Thickness(5),
+                FontWeight = FontWeights.Bold
+            };
+            Grid.SetRow(labelProc, 0);
+            grid.Children.Add(labelProc);
+
+            var labelObs = new Label
+            {
+                Content = "Observações:",
+                Margin = new Thickness(5, 10, 5, 5)
+            };
+            Grid.SetRow(labelObs, 1);
+            grid.Children.Add(labelObs);
+
+            var textBoxObs = new TextBox
+            {
+                Margin = new Thickness(5),
+                TextWrapping = TextWrapping.Wrap,
+                AcceptsReturn = true,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                MaxLength = 255
+            };
+            Grid.SetRow(textBoxObs, 2);
+            grid.Children.Add(textBoxObs);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(5)
+            };
+
+            var btnSalvar = new Button
+            {
+                Content = "Salvar",
+                Margin = new Thickness(5, 0, 5, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                Width = 100
+            };
+
+            var btnCancelar = new Button
+            {
+                Content = "Cancelar",
+                Margin = new Thickness(5, 0, 5, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                Width = 100
+            };
+
+            btnSalvar.Click += async (s, args) =>
+            {
+                try
+                {
+                    var proximoCodigo = await _procedimentoComumService.ObterProximoCodigoAsync();
+                    
+                    var novoComum = new ProcedimentoComum
+                    {
+                        PrcCod = proximoCodigo,
+                        PrcCodProc = procedimento.CoProcedimento,
+                        PrcNoProcedimento = procedimento.NoProcedimento,
+                        PrcObservacoes = textBoxObs.Text.Trim()
+                    };
+
+                    await _procedimentoComumService.AdicionarAsync(novoComum);
+                    
+                    // Atualizar cache
+                    _procedimentosComunsCache.Add(novoComum);
+                    
+                    // Atualizar DataGrid para mostrar a estrela
+                    ProcedimentosDataGrid.Items.Refresh();
+                    
+                    dialog.Close();
+                    
+                    MessageBox.Show("Procedimento comum adicionado com sucesso!", 
+                                  "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erro ao adicionar procedimento comum:\n{ex.Message}", 
+                                  "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            };
+
+            btnCancelar.Click += (s, args) => dialog.Close();
+
+            buttonPanel.Children.Add(btnSalvar);
+            buttonPanel.Children.Add(btnCancelar);
+            Grid.SetRow(buttonPanel, 3);
+            grid.Children.Add(buttonPanel);
+
+            dialog.Content = grid;
+            dialog.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao adicionar procedimento comum:\n{ex.Message}", 
+                          "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    private async Task RemoverProcedimentoComumDoContextMenuAsync(ProcedimentoComum procComum)
+    {
+        try
+        {
+            var confirmacao = MessageBox.Show(
+                $"Deseja realmente remover o procedimento comum '{procComum.PrcNoProcedimento}'?",
+                "Confirmar Remoção",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirmacao == MessageBoxResult.Yes)
+            {
+                await _procedimentoComumService.RemoverAsync(procComum.PrcCod);
+                
+                // Atualizar cache
+                _procedimentosComunsCache.Remove(procComum);
+                
+                // Atualizar DataGrid para remover a estrela
+                ProcedimentosDataGrid.Items.Refresh();
+                
+                // Se estiver mostrando procedimentos comuns, recarregar
+                if (_procedimentos.Any())
+                {
+                    await CarregarProcedimentosComunsAsync();
+                }
+                
+                MessageBox.Show("Procedimento comum removido com sucesso!", 
+                              "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao remover procedimento comum:\n{ex.Message}", 
+                          "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    private async Task EditarObservacaoProcedimentoComumAsync(ProcedimentoComum procComum)
+    {
+        try
+        {
+            var dialog = new Window
+            {
+                Title = "Editar Observação do Procedimento Comum",
+                Width = 500,
+                Height = 300,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this
+            };
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Informações do procedimento
+            var labelProc = new Label
+            {
+                Content = $"Procedimento: {procComum.PrcCodProc} - {procComum.PrcNoProcedimento}",
+                Margin = new Thickness(5),
+                FontWeight = FontWeights.Bold
+            };
+            Grid.SetRow(labelProc, 0);
+            grid.Children.Add(labelProc);
+
+            var labelObs = new Label
+            {
+                Content = "Observações:",
+                Margin = new Thickness(5, 10, 5, 5)
+            };
+            Grid.SetRow(labelObs, 1);
+            grid.Children.Add(labelObs);
+
+            var textBoxObs = new TextBox
+            {
+                Margin = new Thickness(5),
+                TextWrapping = TextWrapping.Wrap,
+                AcceptsReturn = true,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                MaxLength = 255,
+                Text = procComum.PrcObservacoes ?? string.Empty
+            };
+            Grid.SetRow(textBoxObs, 2);
+            grid.Children.Add(textBoxObs);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(5)
+            };
+
+            var btnSalvar = new Button
+            {
+                Content = "Salvar",
+                Margin = new Thickness(5, 0, 5, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                Width = 100
+            };
+
+            var btnCancelar = new Button
+            {
+                Content = "Cancelar",
+                Margin = new Thickness(5, 0, 5, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                Width = 100
+            };
+
+            btnSalvar.Click += async (s, args) =>
+            {
+                try
+                {
+                    procComum.PrcObservacoes = textBoxObs.Text.Trim();
+                    await _procedimentoComumService.AtualizarAsync(procComum);
+                    
+                    // Atualizar cache
+                    var index = _procedimentosComunsCache.FindIndex(p => p.PrcCod == procComum.PrcCod);
+                    if (index >= 0)
+                    {
+                        _procedimentosComunsCache[index] = procComum;
+                    }
+                    
+                    dialog.Close();
+                    
+                    MessageBox.Show("Observação atualizada com sucesso!", 
+                                  "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erro ao atualizar observação:\n{ex.Message}", 
+                                  "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            };
+
+            btnCancelar.Click += (s, args) => dialog.Close();
+
+            buttonPanel.Children.Add(btnSalvar);
+            buttonPanel.Children.Add(btnCancelar);
+            Grid.SetRow(buttonPanel, 3);
+            grid.Children.Add(buttonPanel);
+
+            dialog.Content = grid;
+            dialog.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao editar observação:\n{ex.Message}", 
                           "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -1088,6 +1714,12 @@ public partial class MainWindow : Window
 
                 await _procedimentoComumService.AdicionarAsync(novoComum);
                 
+                // Atualizar cache
+                _procedimentosComunsCache.Add(novoComum);
+                
+                // Atualizar DataGrid principal para mostrar a estrela
+                ProcedimentosDataGrid.Items.Refresh();
+                
                 // Recarregar lista
                 var atualizados = await _procedimentoComumService.BuscarTodosAsync();
                 dataGrid.ItemsSource = atualizados;
@@ -1192,6 +1824,16 @@ public partial class MainWindow : Window
             {
                 procedimentoComum.PrcObservacoes = textBoxObs.Text.Trim();
                 await _procedimentoComumService.AtualizarAsync(procedimentoComum);
+                
+                // Atualizar cache
+                var index = _procedimentosComunsCache.FindIndex(p => p.PrcCod == procedimentoComum.PrcCod);
+                if (index >= 0)
+                {
+                    _procedimentosComunsCache[index] = procedimentoComum;
+                }
+                
+                // Atualizar DataGrid principal para atualizar tooltip
+                ProcedimentosDataGrid.Items.Refresh();
                 
                 // Recarregar lista
                 var atualizados = await _procedimentoComumService.BuscarTodosAsync();

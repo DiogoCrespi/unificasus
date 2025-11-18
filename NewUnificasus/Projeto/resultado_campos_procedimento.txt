@@ -1,0 +1,21 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO 
+=============================== =============================== ================ ======= 
+INDICE                          RDB$38                          INTEGER                4 
+CO_FINANCIAMENTO                RDB$39                          VARCHAR                2 
+CO_PROCEDIMENTO                 RDB$40                          VARCHAR               10 
+CO_RUBRICA                      RDB$41                          VARCHAR                6 
+DT_COMPETENCIA                  RDB$42                          VARCHAR                6 
+NO_PROCEDIMENTO                 RDB$43                          VARCHAR              250 
+QT_DIAS_PERMANENCIA             RDB$44                          INTEGER                4 
+QT_MAXIMA_EXECUCAO              RDB$45                          INTEGER                4 
+QT_PONTOS                       RDB$46                          INTEGER                4 
+TP_COMPLEXIDADE                 RDB$47                          VARCHAR                1 
+TP_SEXO                         RDB$48                          VARCHAR                1 
+VL_IDADE_MAXIMA                 RDB$49                          INTEGER                4 
+VL_IDADE_MINIMA                 RDB$50                          INTEGER                4 
+VL_SA                           RDB$51                          DOUBLE PRECISION       8 
+VL_SH                           RDB$52                          DOUBLE PRECISION       8 
+VL_SP                           RDB$53                          DOUBLE PRECISION       8 
+QT_TEMPO_PERMANENCIA            RDB$250                         INTEGER                4 
+

@@ -1,0 +1,11 @@
+﻿
+  TOTAL_PROCEDIMENTOS TOTAL_COM_SP_MAIOR_ZERO   TOTAL_COM_SP_ZERADO 
+===================== ======================= ===================== 
+                   32                       0                    32 
+
+
+CODIGO_GRUPO CODIGO_SUBGRUPO CODIGO_COMPLETO_SUBGRUPO   TOTAL_PROCEDIMENTOS 
+============ =============== ======================== ===================== 
+01           01              0101                                        32 
+01           02              0102                                        59 
+

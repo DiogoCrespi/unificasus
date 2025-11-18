@@ -18,6 +18,11 @@ public interface IProcedimentoRepository
     Task<Procedimento?> BuscarPorCodigoAsync(string codigo, string competencia, CancellationToken cancellationToken = default);
     
     /// <summary>
+    /// Busca múltiplos procedimentos por uma lista de códigos
+    /// </summary>
+    Task<IEnumerable<Procedimento>> BuscarPorCodigosAsync(IEnumerable<string> codigos, string competencia, CancellationToken cancellationToken = default);
+    
+    /// <summary>
     /// Busca procedimentos por filtro (código ou nome)
     /// </summary>
     Task<IEnumerable<Procedimento>> BuscarPorFiltroAsync(string filtro, string competencia, CancellationToken cancellationToken = default);
