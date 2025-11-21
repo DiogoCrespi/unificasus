@@ -1,0 +1,6 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_EXCECAO_COMPATIBILIDADE      TABELA 
+RL_PROCEDIMENTO_COMPATIVEL      TABELA 
+

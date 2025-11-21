@@ -70,12 +70,17 @@ public interface IProcedimentoRepository
     /// <summary>
     /// Busca serviços relacionados a um procedimento
     /// </summary>
-    Task<IEnumerable<RelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ServicoRelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Busca tipos de leito relacionados a um procedimento
     /// </summary>
     Task<IEnumerable<RelacionadoItem>> BuscarTiposLeitoRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Busca instrumentos de registro relacionados a um procedimento
+    /// </summary>
+    Task<IEnumerable<RelacionadoItem>> BuscarInstrumentosRegistroRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Busca modalidades relacionadas a um procedimento
@@ -86,6 +91,16 @@ public interface IProcedimentoRepository
     /// Busca descrição relacionada a um procedimento
     /// </summary>
     Task<IEnumerable<RelacionadoItem>> BuscarDescricaoRelacionadaAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Busca detalhes relacionados a um procedimento
+    /// </summary>
+    Task<IEnumerable<RelacionadoItem>> BuscarDetalhesRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Busca incrementos relacionados a um procedimento
+    /// </summary>
+    Task<IEnumerable<RelacionadoItem>> BuscarIncrementosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -96,5 +111,16 @@ public class RelacionadoItem
     public string Codigo { get; set; } = string.Empty;
     public string? Descricao { get; set; }
     public string? InformacaoAdicional { get; set; }
+    public string? DescricaoCompleta { get; set; } // Para descrição longa (ex: DS_DETALHE)
+}
+
+/// <summary>
+/// Item de serviço relacionado a um procedimento (com descrição de classificação)
+/// </summary>
+public class ServicoRelacionadoItem : RelacionadoItem
+{
+    public string? CodigoClassificacao { get; set; }
+    public string? DescricaoClassificacao { get; set; }
+    public string? Competencia { get; set; }
 }
 

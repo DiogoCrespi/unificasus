@@ -1,0 +1,11 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO NULLABLE POSICAO 
+=============================== =============================== ================ ======= ======== ======= 
+INDICE                          RDB$127                         INTEGER                4 NOT NULL       0 
+CO_HABILITACAO                  RDB$128                         VARCHAR                4 NULL           1 
+CO_PROCEDIMENTO                 RDB$129                         VARCHAR               10 NULL           2 
+DT_COMPETENCIA                  RDB$130                         VARCHAR                6 NULL           3 
+VL_PERCENTUAL_SA                RDB$131                         DOUBLE PRECISION       8 NULL           4 
+VL_PERCENTUAL_SH                RDB$132                         DOUBLE PRECISION       8 NULL           5 
+VL_PERCENTUAL_SP                RDB$133                         DOUBLE PRECISION       8 NULL           6 
+

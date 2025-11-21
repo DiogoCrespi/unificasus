@@ -1,0 +1,11 @@
+-- Verificar estrutura exata da tabela TB_DESCRICAO_DETALHE
+
+-- 1. Mostrar todos os campos da tabela
+SELECT FIRST 1 * FROM TB_DESCRICAO_DETALHE;
+
+-- 2. Listar campos usando RDB$RELATION_FIELDS
+SELECT 
+    rf.RDB$FIELD_NAME as CAMPO
+FROM RDB$RELATION_FIELDS rf
+WHERE rf.RDB$RELATION_NAME = 'TB_DESCRICAO_DETALHE'
+ORDER BY rf.RDB$FIELD_POSITION;

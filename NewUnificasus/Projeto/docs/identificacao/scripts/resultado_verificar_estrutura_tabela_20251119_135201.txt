@@ -1,0 +1,13 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO NULLABLE POSICAO 
+=============================== =============================== ================ ======= ======== ======= 
+INDICE                          RDB$144                         INTEGER                4 NOT NULL       0 
+CO_PROCEDIMENTO_COMPATIVEL      RDB$145                         VARCHAR               10 NULL           1 
+CO_PROCEDIMENTO_PRINCIPAL       RDB$146                         VARCHAR               10 NULL           2 
+CO_REGISTRO_COMPATIVEL          RDB$147                         VARCHAR                2 NULL           3 
+CO_REGISTRO_PRINCIPAL           RDB$148                         VARCHAR                2 NULL           4 
+DT_COMPETENCIA                  RDB$149                         VARCHAR                6 NULL           5 
+QT_PERMITIDA                    RDB$150                         INTEGER                4 NULL           6 
+TP_COMPATIBILIDADE              RDB$151                         VARCHAR                1 NULL           7 
+NO_PROCEDIMENTO                 RDB$152                         VARCHAR              250 NULL           8 
+

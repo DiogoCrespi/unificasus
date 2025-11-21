@@ -1,0 +1,49 @@
+﻿
+CO_PROCEDIMENTO NO_PROCEDIMENTO_BLOB NO_PROCEDIMENTO                                                                                                                                                                                                                                            CO_CID       NO_CID_BLOB NO_CID                                                                                               ST_PRINCIPAL DT_COMPETENCIA 
+=============== ==================== =============================================================================== ====== ================= =============================================================================== ============ ============== 
+0201010038                       0:2 BIOPSIA CIRURGICA DE TIREOIDE                                                                                                                                                                                                                              D093                 0:1 CARCINOMA IN SITU DA TIREËIDE E DE OUTRAS GL┬NDULAS ENDËCRINAS                                       S            201110         
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+NO_CID_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0201010038                       0:4 BIOPSIA CIRURGICA DE TIREOIDE                                                                                                                                                                                                                              D34                  0:3 NEOPLASIA BENIGNA DA GL┬NDULA TIREËIDE                                                               S            201110         
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+NO_CID_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0201010038                       0:6 BIOPSIA CIRURGICA DE TIREOIDE                                                                                                                                                                                                                              D440                 0:5 NEOPLASIA DE COMPORTAMENTO INCERTO OU DESCONHECIDO DA GL┬NDULA TIREËIDE                              S            201110         
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+NO_CID_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0201010038                       0:8 BIOPSIA CIRURGICA DE TIREOIDE                                                                                                                                                                                                                              C73                  0:7 NEOPLASIA MALIGNA DA GL┬NDULA TIREËIDE                                                               S            201110         
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+NO_CID_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0201010038                       0:a BIOPSIA CIRURGICA DE TIREOIDE                                                                                                                                                                                                                              D093                 0:9 CARCINOMA IN SITU DA TIREËIDE E DE OUTRAS GL┬NDULAS ENDËCRINAS                                       S            201109         
+==============================================================================
+NO_PROCEDIMENTO_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+NO_CID_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+

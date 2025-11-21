@@ -52,3 +52,4 @@ Se ainda aparecerem caracteres `\uFFFD` ():
 2. Verifique se o helper está lendo o BLOB primeiro
 3. Pode ser necessário ajustar a conversão de encoding
 
+

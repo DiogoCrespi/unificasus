@@ -1,0 +1,5 @@
+﻿
+TIPO_CONSTRAINT NOME_INDICE                     CAMPO                           POSICAO 
+=============== =============================== =============================== ======= 
+PRIMARY KEY     RDB$PRIMARY17                   INDICE                                0 
+

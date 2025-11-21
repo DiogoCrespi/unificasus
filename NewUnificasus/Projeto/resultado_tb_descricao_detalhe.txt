@@ -1,0 +1,29 @@
+
+      INDICE CO_DETALHE        DS_DETALHE DT_COMPETENCIA 
+============ ========== ================= ============== 
+         339 001                    9f:1f 201108         
+==============================================================================
+DS_DETALHE:  
+DESTINA-SE A IDENTIFICAR SE NO VALOR DO PROCEDIMENTO JÁ ESTÁ INCLUSO QUALQUER TIPO DE ANESTESIA, EXCETO ANESTESIA LOCAL, POIS ESTA JÁ ESTÁ INCLUSA NO VALOR DO PROCEDIMENTO. ||NOS PROCEDIMENTOS HOSPITALARES COM O ATRIBUTO "INCLUI ANESTESIA" SIGNIFICA QUE O VALOR DA ANESTESIA ESTÁ INCLUÍDO NO COMPONENTE SP (SERVIÇOS PROFISSIONAIS), NÃO PERMITINDO O REGISTRO DE CÓDIGOS DE ANESTESIA EM SEPARADO, DO PROCEDIMENTO PRINCIPAL. NOS PROCEDIMENTOS AMBULATORIAIS, COM O ATRIBUTO "INCLUI ANESTESIA" SIGNIFICA QUE O VALOR DA ANESTESIA ESTÁ INCLUÍDO NO COMPONENTE SA (SERVIÇO AMBULATORIAL). ||
+==============================================================================
+         340 002                    9f:20 201108         
+==============================================================================
+DS_DETALHE:  
+IDENTIFICA OS PROCEDIMENTOS QUE INTEGRAM O ELENCO DA POLÍTICA NACIONAL DE PROCEDIMENTOS CIRÚRGICOS ELETIVOS DE MÉDIA COMPLEXIDADE AMBULATORIAL E HOSPITALAR, E QUE SÃO DEFINIDOS EM PORTARIA ESPECÍFICA.
+==============================================================================
+         341 003                    9f:21 201108         
+==============================================================================
+DS_DETALHE:  
+IDENTIFICA OS PROCEDIMENTOS QUE PERMITEM O REGISTRO NA AIH DE CONTINUIDADE, OU SEJA, LONGA PERMANÊNCIA.
+==============================================================================
+         342 004                    9f:22 201108         
+==============================================================================
+DS_DETALHE:  
+INDICA QUE PELAS CARACTERÍSTICAS PRÓPRIAS DO PROCEDIMENTO OU PELA CONDIÇÃO CLÍNICA DO PACIENTE ADMITE DIAS DE PERMANÊNCIA ALÉM DO DOBRO DOS DIAS PREVISTOS NO ATRIBUTO -"MÉDIA DE PERMANÊNCIA". NESSE CASO É NECESSÁRIO O REGISTRO NA AIH DO CÓDIGO DE PROCEDIMENTO 08.02.01.019-9.
+==============================================================================
+         343 005                    9f:23 201108         
+==============================================================================
+DS_DETALHE:  
+IDENTIFICA OS PROCEDIMENTOS QUE ADMITEM LIBERAÇÃO PELO GESTOR DE SAÚDE LOCAL, DE QUANTIDADE SUPERIOR A DEFINIDA EM SEU ATRIBUTO “QUANTIDADE MÁXIMA”.
+==============================================================================
+

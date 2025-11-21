@@ -32,6 +32,8 @@
                     <RadioButton x:Name="RbGrupo" Content="Grupo" IsChecked="True" Margin="0,2" Checked="TipoFiltro_Changed"/>
                     <RadioButton x:Name="RbSubGrupo" Content="Sub-grupo" Margin="0,2" Checked="TipoFiltro_Changed"/>
                     <RadioButton x:Name="RbFormaOrganizacao" Content="Forma de organização" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                    <RadioButton x:Name="RbTipoLeito" Content="Tipo de Leito" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                    <RadioButton x:Name="RbInstrumentoRegistro" Content="Instrumento de Registro" Margin="0,2" Checked="TipoFiltro_Changed"/>
                     <RadioButton x:Name="RbProcedimento" Content="Procedimento" Margin="0,2" Checked="TipoFiltro_Changed"/>
                 </StackPanel>
 

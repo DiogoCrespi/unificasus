@@ -1,0 +1,92 @@
+﻿
+TOTAL_TIPOS_LEITO               3317
+
+
+
+CO_TIPO_LEITO                   01
+NO_TIPO_LEITO                   CIR┌RGICO
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   02
+NO_TIPO_LEITO                   OBST╔TRICOS
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   03
+NO_TIPO_LEITO                   CL═NICO
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   04
+NO_TIPO_LEITO                   CRÈNICOS
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   05
+NO_TIPO_LEITO                   PSIQUIATRIA
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   06
+NO_TIPO_LEITO                   PNEUMOLOGIA SANIT┴RIA (TISIOLOGIA)
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   07
+NO_TIPO_LEITO                   PEDI┴TRICOS
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   08
+NO_TIPO_LEITO                   REABILITAÃ├O
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   09
+NO_TIPO_LEITO                   LEITO DIA / CIR┌RGICOS
+DT_COMPETENCIA                  201108
+
+CO_TIPO_LEITO                   10
+NO_TIPO_LEITO                   LEITO DIA / AIDS
+DT_COMPETENCIA                  201108
+
+
+
+TOTAL_RELACIONAMENTOS           362124
+
+
+
+CO_PROCEDIMENTO                 0303030011
+CO_TIPO_LEITO                   11
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030020
+CO_TIPO_LEITO                   03
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030020
+CO_TIPO_LEITO                   07
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030038
+CO_TIPO_LEITO                   03
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030038
+CO_TIPO_LEITO                   07
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030046
+CO_TIPO_LEITO                   03
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030046
+CO_TIPO_LEITO                   07
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030054
+CO_TIPO_LEITO                   03
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030054
+CO_TIPO_LEITO                   07
+DT_COMPETENCIA                  201108
+
+CO_PROCEDIMENTO                 0303030062
+CO_TIPO_LEITO                   03
+DT_COMPETENCIA                  201108
+
+

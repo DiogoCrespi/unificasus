@@ -1,0 +1,8 @@
+
+CAMPO                           
+=============================== 
+INDICE                          
+CO_PROCEDIMENTO                 
+DS_PROCEDIMENTO                 
+DT_COMPETENCIA                  
+

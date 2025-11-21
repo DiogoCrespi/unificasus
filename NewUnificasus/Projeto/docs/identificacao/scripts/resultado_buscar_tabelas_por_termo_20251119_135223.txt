@@ -1,0 +1,7 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_PROCEDIMENTO_HABILITACAO     TABELA 
+TB_GRUPO_HABILITACAO            TABELA 
+TB_HABILITACAO                  TABELA 
+

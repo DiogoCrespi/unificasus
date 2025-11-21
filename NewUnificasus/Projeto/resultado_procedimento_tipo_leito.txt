@@ -1,0 +1,23 @@
+
+CO_PROCEDIMENTO NO_PROCEDIMENTO                                                                                                                                                                                                                                            CO_TIPO_LEITO NO_TIPO_LEITO                                                DT_COMPETENCIA 
+=============== =============================================================================== ============= ============================================================ ============== 
+0201010038      BIOPSIA CIRURGICA DE TIREOIDE                                                                                                                                                                                                                              01            CIRÚRGICO                                                    201108         
+0201010097      BIOPSIA DE CONJUNTIVA                                                                                                                                                                                                                                      09            LEITO DIA / CIRÚRGICOS                                       201108         
+0201010097      BIOPSIA DE CONJUNTIVA                                                                                                                                                                                                                                      07            PEDIÁTRICOS                                                  201108         
+0201010097      BIOPSIA DE CONJUNTIVA                                                                                                                                                                                                                                      01            CIRÚRGICO                                                    201108         
+0201010119      BIOPSIA DE CORNEA                                                                                                                                                                                                                                          09            LEITO DIA / CIRÚRGICOS                                       201108         
+
+
+CO_PROCEDIMENTO NOME_PROCEDIMENTO                                                                                    CO_TIPO_LEITO NOME_TIPO_LEITO                                              
+=============== =============================================================================== ============= ============================================================ 
+0201010038      BIOPSIA CIRURGICA DE TIREOIDE                                                                        01            CIRÚRGICO                                                    
+0201010097      BIOPSIA DE CONJUNTIVA                                                                                01            CIRÚRGICO                                                    
+0201010097      BIOPSIA DE CONJUNTIVA                                                                                07            PEDIÁTRICOS                                                  
+0201010097      BIOPSIA DE CONJUNTIVA                                                                                09            LEITO DIA / CIRÚRGICOS                                       
+0201010119      BIOPSIA DE CORNEA                                                                                    01            CIRÚRGICO                                                    
+0201010119      BIOPSIA DE CORNEA                                                                                    07            PEDIÁTRICOS                                                  
+0201010119      BIOPSIA DE CORNEA                                                                                    09            LEITO DIA / CIRÚRGICOS                                       
+0201010127      BIOPSIA DE CORPO VERTEBRAL A CEU ABERTO                                                              01            CIRÚRGICO                                                    
+0201010135      BIOPSIA DE CORPO VERTEBRAL LAMINA E PEDICULO VERTEBRAL (POR DISPOSITIVO GUIADO)                      01            CIRÚRGICO                                                    
+0201010143      BIOPSIA DE ENDOCARDIO / MIOCARDIO                                                                    01            CIRÚRGICO                                                    
+

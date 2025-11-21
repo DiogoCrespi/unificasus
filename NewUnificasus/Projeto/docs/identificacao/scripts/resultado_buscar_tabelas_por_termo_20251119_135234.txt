@@ -1,0 +1,7 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_PROCEDIMENTO_DETALHE         TABELA 
+TB_DESCRICAO_DETALHE            TABELA 
+TB_DETALHE                      TABELA 
+

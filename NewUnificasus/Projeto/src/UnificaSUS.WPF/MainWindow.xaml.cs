@@ -449,16 +449,65 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ProcedimentosDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void ProcedimentosDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ProcedimentosDataGrid.SelectedItem is Procedimento procedimento)
         {
             CarregarDetalhesProcedimento(procedimento);
             AtualizarNomeSubmenu(procedimento);
+            await AtualizarAreaRelacionados();
         }
         else
         {
             SubmenuHeaderTextBlock.Text = "Nenhum procedimento selecionado";
+        }
+    }
+
+    private async void CompetenciaComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CompetenciaComboBox.SelectedItem is string competencia)
+        {
+            // Se a competência selecionada for diferente da ativa, avisa o usuário
+            // Mas não impede de ver, apenas de editar (se houvesse edição)
+            // O botão de ativar competência é que muda a _competenciaAtiva globalmente para operações de escrita
+            // Para leitura, podemos usar a selecionada no combo se quisermos visualizar dados de outra competência?
+            // O requisito diz "ATIVAR COMPETÊNCIA" botão e "Competência:" combo.
+            // O comportamento atual do sistema parece ser que o combo apenas seleciona para ativação.
+            // Mas se quisermos que o grid atualize conforme a competência selecionada no combo (preview),
+            // deveríamos atualizar _competenciaAtiva ou passar a competência do combo para as buscas.
+            
+            // Por segurança e seguindo o padrão atual, vamos manter _competenciaAtiva como a fonte da verdade
+            // até que o usuário clique em "Ativar". 
+            // PORÉM, o usuário pediu "embaixo de Competência tem um espaço...".
+            // Se ele mudar o combo, ele espera ver os dados daquela competência?
+            // Geralmente sim. Mas o botão "Ativar" sugere que a mudança não é imediata para todo o sistema.
+            // Vamos assumir que a visualização segue a competência ATIVA (que é exibida onde?).
+            // O combo serve para selecionar uma NOVA competência para ativar.
+            
+            // Se o usuário quer ver os dados da competência selecionada no combo ANTES de ativar,
+            // precisaríamos passar essa competência para o AtualizarAreaRelacionados.
+            // Mas o AtualizarAreaRelacionados usa _competenciaAtiva.
+            
+            // Vamos manter simples: Atualiza a área se a competência mudar (se o usuário ativar).
+            // Se o combo for apenas para seleção pré-ativação, não faz nada aqui.
+            // Mas se o combo JÁ reflete a competência ativa, então ok.
+            
+            // Verificando o código de AtivarCompetencia_Click (não visível aqui, mas inferido):
+            // Ele deve pegar o item do combo e setar _competenciaAtiva.
+            
+            // Se o usuário mudar o combo, ele ainda não ativou.
+            // Então não devemos atualizar a visualização com dados misturados (procedimentos de uma competência, relacionados de outra).
+            // O ideal é só atualizar quando confirmar.
+            
+            // Mas espere, o DataGrid de procedimentos é carregado com base em qual competência?
+            // Provavelmente _competenciaAtiva.
+            // Então os relacionados também devem ser.
+            
+            // Conclusão: Não alterar CompetenciaComboBox_SelectionChanged para atualizar a view, 
+            // pois a view depende da competência ATIVA, que só muda no botão Confirmar/Ativar.
+            
+            // Mas vou adicionar o call no ProcedimentosDataGrid_SelectionChanged.
+            await AtualizarAreaRelacionados();
         }
     }
 
@@ -747,10 +796,7 @@ public partial class MainWindow : Window
         };
     }
 
-    private void CompetenciaComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // A competência só será ativada quando clicar no botão de confirmar
-    }
+
 
     private async void ConfirmarCompetencia_Click(object sender, RoutedEventArgs e)
     {
@@ -1923,12 +1969,15 @@ public partial class MainWindow : Window
                         procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
                     break;
                 case "Serviços":
-                    relacionados = await _procedimentoService.BuscarServicosRelacionadosAsync(
+                    var servicos = await _procedimentoService.BuscarServicosRelacionadosAsync(
                         procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
-                    break;
+                    ExibirServicosRelacionados(servicos, filtroSelecionado, procedimentoSelecionado.CoProcedimento);
+                    return;
                 case "Tipo de Leito":
+                    System.Diagnostics.Debug.WriteLine($"BuscarTiposLeito: Procedimento={procedimentoSelecionado.CoProcedimento}, Competencia={_competenciaAtiva}");
                     relacionados = await _procedimentoService.BuscarTiposLeitoRelacionadosAsync(
                         procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    System.Diagnostics.Debug.WriteLine($"BuscarTiposLeito: Retornados {relacionados.Count()} registros");
                     break;
                 case "Modalidade":
                     relacionados = await _procedimentoService.BuscarModalidadesRelacionadasAsync(
@@ -1938,15 +1987,18 @@ public partial class MainWindow : Window
                     relacionados = await _procedimentoService.BuscarDescricaoRelacionadaAsync(
                         procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
                     break;
-                case "Instrumento de Registro":
                 case "Detalhes":
+                    relacionados = await _procedimentoService.BuscarDetalhesRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
                 case "Incremento":
-                    MessageBox.Show($"Funcionalidade '{filtroSelecionado}' ainda não implementada.", 
-                                  "Aviso", 
-                                  MessageBoxButton.OK, 
-                                  MessageBoxImage.Information);
-                    StatusTextBlock.Text = "Pronto";
-                    return;
+                    relacionados = await _procedimentoService.BuscarIncrementosRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
+                case "Instrumento de Registro":
+                    relacionados = await _procedimentoService.BuscarInstrumentosRegistroRelacionadosAsync(
+                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    break;
                 default:
                     MessageBox.Show($"Filtro '{filtroSelecionado}' não reconhecido.", 
                                   "Erro", 
@@ -1973,14 +2025,14 @@ public partial class MainWindow : Window
 
     private void ExibirRelacionados(IEnumerable<RelacionadoItem> relacionados, string tipoFiltro, string coProcedimento)
     {
-        // Para "Descrição", usa uma janela maior com TextBox expansível
-        bool isDescricao = tipoFiltro == "Descrição";
+        // Para "Descrição" e "Detalhes", usa uma janela maior com TextBox expansível
+        bool isDescricaoOuDetalhes = tipoFiltro == "Descrição" || tipoFiltro == "Detalhes";
         
         var dialog = new Window
         {
             Title = $"{tipoFiltro} relacionados ao procedimento {coProcedimento}",
-            Width = isDescricao ? 900 : 700,
-            Height = isDescricao ? 600 : 500,
+            Width = isDescricaoOuDetalhes ? 900 : 700,
+            Height = isDescricaoOuDetalhes ? 600 : 500,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Owner = this
         };
@@ -2012,30 +2064,33 @@ public partial class MainWindow : Window
         };
         btnFechar.Click += (s, e) => dialog.Close();
 
-        // Se for Descrição e houver registros, usa TextBox expansível
-        if (isDescricao && relacionados.Any())
+        // Se for Descrição ou Detalhes e houver registros, usa layout especial
+        if (isDescricaoOuDetalhes && relacionados.Any())
         {
             var primeiroItem = relacionados.First();
             
-            // Ajusta as linhas do grid para acomodar o TextBox
-            grid.RowDefinitions[1] = new RowDefinition { Height = GridLength.Auto };
-            grid.RowDefinitions.Insert(2, new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            // Ajusta as linhas do grid para acomodar DataGrid + TextBox
+            grid.RowDefinitions.Clear();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Título
             
-            // Label do código do procedimento
-            var labelCodigo = new Label
+            if (tipoFiltro == "Detalhes")
             {
-                Content = $"Código do Procedimento: {primeiroItem.Codigo}",
-                FontSize = 12,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(10, 5, 10, 5)
-            };
-            Grid.SetRow(labelCodigo, 1);
-            grid.Children.Add(labelCodigo);
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(7, GridUnitType.Star) }); // DataGrid (70%)
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3, GridUnitType.Star) }); // TextBox (30%)
+            }
+            else
+            {
+                // Para Descrição, o Label ocupa pouco espaço e o TextBox ocupa o resto
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Label
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // TextBox
+            }
+
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Botão
             
-            // TextBox expansível com scroll para a descrição
+            // TextBox para descrição (comum para Detalhes e Descrição)
             var textBoxDescricao = new TextBox
             {
-                Text = primeiroItem.Descricao ?? "Nenhuma descrição disponível.",
+                Text = primeiroItem.DescricaoCompleta ?? primeiroItem.Descricao ?? "Nenhuma descrição disponível.",
                 IsReadOnly = true,
                 TextWrapping = TextWrapping.Wrap,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -2046,6 +2101,72 @@ public partial class MainWindow : Window
                 VerticalAlignment = VerticalAlignment.Stretch,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
+
+            // DataGrid na parte superior (para Detalhes)
+            if (tipoFiltro == "Detalhes")
+            {
+                var dataGrid = new DataGrid
+                {
+                    AutoGenerateColumns = false,
+                    IsReadOnly = true,
+                    GridLinesVisibility = DataGridGridLinesVisibility.All,
+                    HeadersVisibility = DataGridHeadersVisibility.Column,
+                    Margin = new Thickness(10, 5, 10, 5),
+                    VerticalAlignment = VerticalAlignment.Stretch
+                };
+
+                // Colunas: Comp. | Cód. | Descrição
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Comp.",
+                    Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
+                    Width = new DataGridLength(80)
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Cód.",
+                    Binding = new System.Windows.Data.Binding("Codigo"),
+                    Width = new DataGridLength(80)
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Descrição",
+                    Binding = new System.Windows.Data.Binding("Descricao"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+
+                dataGrid.ItemsSource = relacionados;
+                dataGrid.SelectedIndex = 0;
+                
+                // Evento para atualizar TextBox quando seleciona outra linha
+                dataGrid.SelectionChanged += (s, e) =>
+                {
+                    if (dataGrid.SelectedItem is RelacionadoItem itemSelecionado)
+                    {
+                        textBoxDescricao.Text = itemSelecionado.DescricaoCompleta ?? itemSelecionado.Descricao ?? "Nenhuma descrição disponível.";
+                    }
+                };
+                
+                Grid.SetRow(dataGrid, 1);
+                grid.Children.Add(dataGrid);
+            }
+            else
+            {
+                // Para "Descrição", mostra apenas o label do código
+                var labelCodigo = new Label
+                {
+                    Content = $"Código do Procedimento: {primeiroItem.Codigo}",
+                    FontSize = 12,
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(10, 5, 10, 5)
+                };
+                Grid.SetRow(labelCodigo, 1);
+                grid.Children.Add(labelCodigo);
+            }
+            
+            // Adiciona TextBox na linha 2 (comum para Detalhes e Descrição)
             Grid.SetRow(textBoxDescricao, 2);
             grid.Children.Add(textBoxDescricao);
             
@@ -2065,26 +2186,151 @@ public partial class MainWindow : Window
                 Margin = new Thickness(10, 5, 10, 5)
             };
 
-            dataGrid.Columns.Add(new DataGridTextColumn
+            // Customizar colunas baseado no tipo de filtro
+            if (tipoFiltro == "Habilitação")
             {
-                Header = "Código",
-                Binding = new System.Windows.Data.Binding("Codigo"),
-                Width = 150
-            });
+                // Para Habilitações: Habil. | Comp. (Grupo) | Descrição
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Habil.",
+                    Binding = new System.Windows.Data.Binding("Codigo"),
+                    Width = 100
+                });
 
-            dataGrid.Columns.Add(new DataGridTextColumn
-            {
-                Header = "Descrição",
-                Binding = new System.Windows.Data.Binding("Descricao"),
-                Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-            });
+                // Coluna Comp. com formatação condicional (vermelho quando vazio)
+                var compColumn = new DataGridTemplateColumn
+                {
+                    Header = "Comp.",
+                    Width = 100
+                };
+                
+                var compCellTemplate = new DataTemplate();
+                var textBlockFactory = new FrameworkElementFactory(typeof(TextBlock));
+                textBlockFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+                textBlockFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+                textBlockFactory.SetValue(TextBlock.MarginProperty, new Thickness(5, 2, 5, 2));
+                
+                // Binding para texto: mostra "Sem grupo" quando vazio, senão mostra o grupo
+                var textBinding = new System.Windows.Data.Binding("InformacaoAdicional")
+                {
+                    Converter = new HabilitaçãoGrupoConverter()
+                };
+                textBlockFactory.SetBinding(TextBlock.TextProperty, textBinding);
+                
+                // Binding para cor: vermelho quando vazio, preto quando tem grupo
+                var colorBinding = new System.Windows.Data.Binding("InformacaoAdicional")
+                {
+                    Converter = new HabilitaçãoGrupoColorConverter()
+                };
+                textBlockFactory.SetBinding(TextBlock.ForegroundProperty, colorBinding);
+                
+                compCellTemplate.VisualTree = textBlockFactory;
+                compColumn.CellTemplate = compCellTemplate;
+                dataGrid.Columns.Add(compColumn);
 
-            dataGrid.Columns.Add(new DataGridTextColumn
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Descrição",
+                    Binding = new System.Windows.Data.Binding("Descricao"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+            }
+            else if (tipoFiltro == "CBO")
             {
-                Header = "Informação Adicional",
-                Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
-                Width = 200
-            });
+                // Para CBO: CBO | Comp. (Competência) | Descrição
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "CBO",
+                    Binding = new System.Windows.Data.Binding("Codigo"),
+                    Width = 120
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Comp.",
+                    Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
+                    Width = 100
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Descrição",
+                    Binding = new System.Windows.Data.Binding("Descricao"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+            }
+            else if (tipoFiltro == "Modalidade")
+            {
+                // Para Modalidade: Comp. | Código | Descrição
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Comp.",
+                    Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
+                    Width = 100
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Código",
+                    Binding = new System.Windows.Data.Binding("Codigo"),
+                    Width = 100
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Descrição",
+                    Binding = new System.Windows.Data.Binding("Descricao"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+            }
+            else if (tipoFiltro == "Instrumento de Registro")
+            {
+                // Para Instrumento de Registro: Comp. | Código | Descrição
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Comp.",
+                    Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
+                    Width = 100
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Código",
+                    Binding = new System.Windows.Data.Binding("Codigo"),
+                    Width = 100
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Descrição",
+                    Binding = new System.Windows.Data.Binding("Descricao"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+            }
+            else
+            {
+                // Para outros tipos: Código | Descrição | Informação Adicional
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Código",
+                    Binding = new System.Windows.Data.Binding("Codigo"),
+                    Width = 150
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Descrição",
+                    Binding = new System.Windows.Data.Binding("Descricao"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+
+                dataGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Informação Adicional",
+                    Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
+                    Width = 200
+                });
+            }
 
             dataGrid.ItemsSource = relacionados.ToList();
             Grid.SetRow(dataGrid, 1);
@@ -2120,5 +2366,160 @@ public partial class MainWindow : Window
 
         dialog.Content = grid;
         dialog.ShowDialog();
+    }
+
+    private void ExibirServicosRelacionados(IEnumerable<ServicoRelacionadoItem> servicos, string tipoFiltro, string coProcedimento)
+    {
+        var dialog = new Window
+        {
+            Title = $"{tipoFiltro} relacionados ao procedimento {coProcedimento}",
+            Width = 1000,
+            Height = 500,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this
+        };
+
+        var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // Título
+        var titulo = new TextBlock
+        {
+            Text = $"{tipoFiltro} relacionados ao procedimento {coProcedimento}",
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(10)
+        };
+        Grid.SetRow(titulo, 0);
+        grid.Children.Add(titulo);
+
+        // Botão de fechar
+        var btnFechar = new Button
+        {
+            Content = "Fechar",
+            Width = 100,
+            Height = 30,
+            Margin = new Thickness(10),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        btnFechar.Click += (s, e) => dialog.Close();
+
+        // DataGrid para exibir os serviços com todas as colunas
+        var dataGrid = new DataGrid
+        {
+            AutoGenerateColumns = false,
+            IsReadOnly = true,
+            GridLinesVisibility = DataGridGridLinesVisibility.All,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            Margin = new Thickness(10, 5, 10, 5)
+        };
+
+        // Colunas para Serviços: Comp. | Serv. | Descrição Serviço | Class. | Descrição Classificação
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Comp.",
+            Binding = new System.Windows.Data.Binding("Competencia"),
+            Width = 100
+        });
+
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Serv.",
+            Binding = new System.Windows.Data.Binding("Codigo"),
+            Width = 80
+        });
+
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Descrição Serviço",
+            Binding = new System.Windows.Data.Binding("Descricao"),
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+        });
+
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Class.",
+            Binding = new System.Windows.Data.Binding("CodigoClassificacao"),
+            Width = 80
+        });
+
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Descrição Classificação",
+            Binding = new System.Windows.Data.Binding("DescricaoClassificacao"),
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+        });
+
+        dataGrid.ItemsSource = servicos.ToList();
+        Grid.SetRow(dataGrid, 1);
+        grid.Children.Add(dataGrid);
+        
+        // Botão na linha 2
+        Grid.SetRow(btnFechar, 2);
+        grid.Children.Add(btnFechar);
+
+        // Mensagem se não houver registros
+        if (!servicos.Any())
+        {
+            var mensagem = new TextBlock
+            {
+                Text = "NENHUM REGISTRO ENCONTRADO.",
+                FontSize = 16,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red)
+            };
+            Grid.SetRow(mensagem, 1);
+            grid.Children.Add(mensagem);
+            
+            // Garante que o botão está visível mesmo sem registros
+            if (!grid.Children.Contains(btnFechar))
+            {
+                Grid.SetRow(btnFechar, 2);
+                grid.Children.Add(btnFechar);
+            }
+        }
+
+        dialog.Content = grid;
+        dialog.ShowDialog();
+    }
+}
+
+// Converter para exibir texto na coluna Comp. de Habilitações
+public class HabilitaçãoGrupoConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value is string grupo && !string.IsNullOrWhiteSpace(grupo))
+        {
+            return grupo;
+        }
+        return "Sem grupo";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+// Converter para exibir cor na coluna Comp. de Habilitações
+public class HabilitaçãoGrupoColorConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value is string grupo && !string.IsNullOrWhiteSpace(grupo))
+        {
+            return new SolidColorBrush(Colors.Black); // Preto quando tem grupo
+        }
+        return new SolidColorBrush(Colors.Red); // Vermelho quando não tem grupo
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        throw new NotImplementedException();
     }
 }

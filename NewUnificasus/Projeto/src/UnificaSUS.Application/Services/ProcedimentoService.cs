@@ -186,7 +186,7 @@ public class ProcedimentoService
     /// <summary>
     /// Busca serviços relacionados a um procedimento
     /// </summary>
-    public async Task<IEnumerable<RelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<ServicoRelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
     {
         return await _repository.BuscarServicosRelacionadosAsync(coProcedimento, competencia, cancellationToken);
     }
@@ -197,6 +197,14 @@ public class ProcedimentoService
     public async Task<IEnumerable<RelacionadoItem>> BuscarTiposLeitoRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
     {
         return await _repository.BuscarTiposLeitoRelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca instrumentos de registro relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarInstrumentosRegistroRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarInstrumentosRegistroRelacionadosAsync(coProcedimento, competencia, cancellationToken);
     }
 
     /// <summary>
@@ -213,6 +221,22 @@ public class ProcedimentoService
     public async Task<IEnumerable<RelacionadoItem>> BuscarDescricaoRelacionadaAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
     {
         return await _repository.BuscarDescricaoRelacionadaAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca detalhes relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarDetalhesRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarDetalhesRelacionadosAsync(coProcedimento, competencia, cancellationToken);
+    }
+
+    /// <summary>
+    /// Busca incrementos relacionados a um procedimento
+    /// </summary>
+    public async Task<IEnumerable<RelacionadoItem>> BuscarIncrementosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        return await _repository.BuscarIncrementosRelacionadosAsync(coProcedimento, competencia, cancellationToken);
     }
 }
 

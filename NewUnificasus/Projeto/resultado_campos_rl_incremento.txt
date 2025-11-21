@@ -1,0 +1,11 @@
+
+CAMPO                           
+=============================== 
+INDICE                          
+CO_HABILITACAO                  
+CO_PROCEDIMENTO                 
+DT_COMPETENCIA                  
+VL_PERCENTUAL_SA                
+VL_PERCENTUAL_SH                
+VL_PERCENTUAL_SP                
+

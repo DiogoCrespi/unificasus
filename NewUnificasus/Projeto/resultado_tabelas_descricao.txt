@@ -1,0 +1,6 @@
+
+RDB$RELATION_NAME               
+=============================== 
+TB_DESCRICAO_DETALHE            
+TB_DESCRICAO                    
+

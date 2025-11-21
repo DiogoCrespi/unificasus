@@ -1,0 +1,19 @@
+﻿
+      TOTAL_REGISTROS 
+===================== 
+                14230 
+
+
+      INDICE CO_CID NO_CID                                                                                               TP_AGRAVO TP_SEXO 
+============ ====== =============================================================================== ========= ======= 
+     1761937 A00    CËLERA                                                                                               0         I       
+     1761938 A000   CËLERA DEVIDA A VIBRIO CHOLERAE 01, BIËTIPO CHOLERAE                                                 2         I       
+     1761939 A001   CËLERA DEVIDA A VIBRIO CHOLERAE 01, BIËTIPO EL TOR                                                   2         I       
+     1761940 A009   CËLERA N├O ESPECIFICADA                                                                              2         I       
+     1761941 A01    FEBRES TIFËIDE E PARATIFËIDE                                                                         0         I       
+     1761942 A010   FEBRE TIFËIDE                                                                                        1         I       
+     1761943 A011   FEBRE PARATIFËIDE A                                                                                  0         I       
+     1761944 A012   FEBRE PARATIFËIDE B                                                                                  0         I       
+     1761945 A013   FEBRE PARATIFËIDE C                                                                                  0         I       
+     1761946 A014   FEBRE PARATIFËIDE N├O ESPECIFICADA                                                                   0         I       
+

@@ -1,0 +1,8 @@
+
+CAMPO                           
+=============================== 
+INDICE                          
+CO_HABILITACAO                  
+DT_COMPETENCIA                  
+NO_HABILITACAO                  
+

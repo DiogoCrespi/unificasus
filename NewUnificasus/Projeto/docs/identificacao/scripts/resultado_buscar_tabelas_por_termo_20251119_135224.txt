@@ -1,0 +1,6 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_PROCEDIMENTO_OCUPACAO        TABELA 
+TB_OCUPACAO                     TABELA 
+

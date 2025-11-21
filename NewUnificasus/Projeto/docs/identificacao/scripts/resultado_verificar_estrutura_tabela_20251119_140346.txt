@@ -1,0 +1,8 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO NULLABLE POSICAO 
+=============================== =============================== ================ ======= ======== ======= 
+INDICE                          RDB$83                          INTEGER                4 NOT NULL       0 
+CO_DETALHE                      RDB$84                          VARCHAR                3 NULL           1 
+DT_COMPETENCIA                  RDB$85                          VARCHAR                6 NULL           2 
+NO_DETALHE                      RDB$86                          VARCHAR              100 NULL           3 
+

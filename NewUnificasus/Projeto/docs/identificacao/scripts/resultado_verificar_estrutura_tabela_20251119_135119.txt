@@ -1,0 +1,9 @@
+﻿
+CAMPO                           TIPO_ORIGEM                     TIPO             TAMANHO NULLABLE POSICAO 
+=============================== =============================== ================ ======= ======== ======= 
+INDICE                          RDB$87                          INTEGER                4 NOT NULL       0 
+CO_CID                          RDB$88                          VARCHAR                4 NULL           1 
+NO_CID                          RDB$89                          VARCHAR              100 NULL           2 
+TP_AGRAVO                       RDB$90                          VARCHAR                1 NULL           3 
+TP_SEXO                         RDB$91                          VARCHAR                1 NULL           4 
+

@@ -1,0 +1,6 @@
+
+RDB$RELATION_NAME               
+=============================== 
+RL_PROCEDIMENTO_REGISTRO        
+TB_REGISTRO                     
+

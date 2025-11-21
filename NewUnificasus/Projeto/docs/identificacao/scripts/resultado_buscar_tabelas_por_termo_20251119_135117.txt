@@ -1,0 +1,6 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_PROCEDIMENTO_CID             TABELA 
+TB_CID                          TABELA 
+

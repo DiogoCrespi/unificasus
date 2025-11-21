@@ -520,6 +520,12 @@ public class RelatorioRepository : IRelatorioRepository
                 case "Procedimento":
                     nome = LerCampoTextoDoBlob(reader, "NO_PROCEDIMENTO_BLOB", "NOME");
                     break;
+                case "TipoLeito":
+                    nome = LerCampoTextoDoBlob(reader, "NO_TIPO_LEITO_BLOB", "NOME");
+                    break;
+                case "InstrumentoRegistro":
+                    nome = LerCampoTextoDoBlob(reader, "NO_REGISTRO_BLOB", "NOME");
+                    break;
             }
         }
         catch (Exception ex)
@@ -662,6 +668,234 @@ public class RelatorioRepository : IRelatorioRepository
                 return Encoding.Default.GetString(bytes);
             }
         }
+    }
+    public async Task<IEnumerable<ItemRelatorio>> BuscarTiposLeitoDisponiveisAsync(
+        string competencia, 
+        string? filtro, 
+        CancellationToken cancellationToken = default)
+    {
+        var whereClause = "tl.DT_COMPETENCIA = @competencia";
+        
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            whereClause += " AND (tl.CO_TIPO_LEITO CONTAINING @filtro OR UPPER(CAST(tl.NO_TIPO_LEITO AS VARCHAR(100))) CONTAINING @filtro)";
+        }
+
+        var sql = $@"
+            SELECT DISTINCT
+                tl.CO_TIPO_LEITO AS CODIGO,
+                CAST(tl.NO_TIPO_LEITO AS BLOB) AS NO_TIPO_LEITO_BLOB,
+                tl.NO_TIPO_LEITO AS NOME
+            FROM TB_TIPO_LEITO tl
+            WHERE {whereClause}
+            ORDER BY tl.CO_TIPO_LEITO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var tiposLeito = new List<ItemRelatorio>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@competencia", competencia);
+        
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            command.Parameters.AddWithValue("@filtro", filtro.ToUpper());
+        }
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                // Reutiliza a lógica de mapeamento, tratando como "TipoLeito" (que usará a lógica genérica ou específica se adicionarmos)
+                // Como MapItemRelatorio usa switch no tipo, precisamos garantir que ele saiba lidar ou usar um fallback
+                // Vamos adicionar um case no MapItemRelatorio ou usar um genérico.
+                // Olhando o MapItemRelatorio existente, ele tem cases específicos. Vamos adicionar um novo case lá também.
+                tiposLeito.Add(MapItemRelatorio(reader, "TipoLeito"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar tipos de leito disponíveis para competência {Competencia}", competencia);
+            throw;
+        }
+
+        return tiposLeito;
+    }
+
+    public async Task<IEnumerable<ItemRelatorioProcedimento>> BuscarProcedimentosPorTipoLeitoAsync(
+        string coTipoLeito, 
+        string competencia, 
+        bool naoImprimirSPZerado, 
+        string ordenarPor, 
+        CancellationToken cancellationToken = default)
+    {
+        var whereClause = "pl.CO_TIPO_LEITO = @coTipoLeito AND pr.DT_COMPETENCIA = @competencia AND pl.DT_COMPETENCIA = @competencia";
+        
+        if (naoImprimirSPZerado)
+        {
+            whereClause += " AND pr.VL_SP > 0";
+        }
+
+        var orderByClause = ordenarPor switch
+        {
+            "Nome" => "pr.NO_PROCEDIMENTO",
+            "ValorSP" => "pr.VL_SP DESC",
+            _ => "pr.CO_PROCEDIMENTO"
+        };
+
+        var sql = $@"
+            SELECT 
+                pr.CO_PROCEDIMENTO,
+                CAST(pr.NO_PROCEDIMENTO AS BLOB) AS NO_PROCEDIMENTO_BLOB,
+                pr.NO_PROCEDIMENTO,
+                pr.VL_SP
+            FROM TB_PROCEDIMENTO pr
+            INNER JOIN RL_PROCEDIMENTO_LEITO pl ON pr.CO_PROCEDIMENTO = pl.CO_PROCEDIMENTO
+            WHERE {whereClause}
+            ORDER BY {orderByClause}";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var procedimentos = new List<ItemRelatorioProcedimento>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coTipoLeito", coTipoLeito);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                procedimentos.Add(MapItemRelatorioProcedimento(reader));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar procedimentos por tipo de leito {TipoLeito} e competência {Competencia}", coTipoLeito, competencia);
+            throw;
+        }
+
+        return procedimentos;
+    }
+
+    public async Task<IEnumerable<ItemRelatorio>> BuscarInstrumentosRegistroDisponiveisAsync(
+        string competencia, 
+        string? filtro, 
+        CancellationToken cancellationToken = default)
+    {
+        var whereClause = "reg.DT_COMPETENCIA = @competencia";
+        
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            whereClause += " AND (reg.CO_REGISTRO CONTAINING @filtro OR UPPER(CAST(reg.NO_REGISTRO AS VARCHAR(100))) CONTAINING @filtro)";
+        }
+
+        var sql = $@"
+            SELECT 
+                reg.CO_REGISTRO AS CODIGO,
+                reg.NO_REGISTRO AS NOME
+            FROM TB_REGISTRO reg
+            WHERE {whereClause}
+            ORDER BY reg.CO_REGISTRO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var instrumentos = new List<ItemRelatorio>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@competencia", competencia);
+        
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            command.Parameters.AddWithValue("@filtro", filtro.ToUpper());
+        }
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CODIGO") ?? string.Empty;
+                var nome = FirebirdReaderHelper.GetStringSafe(reader, "NOME");
+                
+                instrumentos.Add(new ItemRelatorio
+                {
+                    Tipo = "InstrumentoRegistro",
+                    Codigo = codigo,
+                    Nome = nome ?? string.Empty
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar instrumentos de registro disponíveis para competência {Competencia}", competencia);
+            throw;
+        }
+
+        return instrumentos;
+    }
+
+    public async Task<IEnumerable<ItemRelatorioProcedimento>> BuscarProcedimentosPorInstrumentoRegistroAsync(
+        string coRegistro, 
+        string competencia, 
+        bool naoImprimirSPZerado, 
+        string ordenarPor, 
+        CancellationToken cancellationToken = default)
+    {
+        var whereClause = "prreg.CO_REGISTRO = @coRegistro AND pr.DT_COMPETENCIA = @competencia AND prreg.DT_COMPETENCIA = @competencia";
+        
+        if (naoImprimirSPZerado)
+        {
+            whereClause += " AND pr.VL_SP > 0";
+        }
+
+        var orderByClause = ordenarPor switch
+        {
+            "Nome" => "pr.NO_PROCEDIMENTO",
+            "ValorSP" => "pr.VL_SP DESC",
+            _ => "pr.CO_PROCEDIMENTO"
+        };
+
+        var sql = $@"
+            SELECT 
+                pr.CO_PROCEDIMENTO,
+                CAST(pr.NO_PROCEDIMENTO AS BLOB) AS NO_PROCEDIMENTO_BLOB,
+                pr.NO_PROCEDIMENTO,
+                pr.VL_SP
+            FROM TB_PROCEDIMENTO pr
+            INNER JOIN RL_PROCEDIMENTO_REGISTRO prreg ON pr.CO_PROCEDIMENTO = prreg.CO_PROCEDIMENTO
+            WHERE {whereClause}
+            ORDER BY {orderByClause}";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var procedimentos = new List<ItemRelatorioProcedimento>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coRegistro", coRegistro);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                procedimentos.Add(MapItemRelatorioProcedimento(reader));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar procedimentos por instrumento de registro {Registro} e competência {Competencia}", coRegistro, competencia);
+            throw;
+        }
+
+        return procedimentos;
     }
 }
 

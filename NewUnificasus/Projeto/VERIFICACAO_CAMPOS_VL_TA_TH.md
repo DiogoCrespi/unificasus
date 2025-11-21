@@ -86,3 +86,4 @@ pr.VL_TH,
    - Se não retornar nada → campos não existem
 3. Com base no resultado, aplique as correções necessárias
 
+

@@ -1,0 +1,24 @@
+
+      INDICE CO_HABILITACAO DT_COMPETENCIA NO_HABILITACAO                                                                                                                                         
+============ ============== ============== =============================================================================== 
+       34505 0101           202006         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       34233 0101           202005         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       33961 0101           202004         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       33689 0101           202003         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       33419 0101           202002         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       33149 0101           202001         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       32879 0101           201912         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       32609 0101           201911         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       32339 0101           201910         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       32069 0101           201909         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       31799 0101           201908         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       31529 0101           201907         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       31259 0101           201906         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       30989 0101           201905         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       30719 0101           201904         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       30449 0101           201903         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       30179 0101           201902         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       29909 0101           201901         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       29640 0101           201812         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+       29371 0101           201811         CENTRO DE REFERÊNCIA EM ATENÇÃO A SAÚDE DO IDOSO                                                                                                       
+

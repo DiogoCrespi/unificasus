@@ -670,7 +670,9 @@ public class ProcedimentoRepository : IProcedimentoRepository
             SELECT 
                 pr.CO_PROCEDIMENTO,
                 CAST(pr.NO_PROCEDIMENTO AS BLOB) AS NO_PROCEDIMENTO_BLOB,
-                pr.NO_PROCEDIMENTO
+                pr.NO_PROCEDIMENTO,
+                pc.TP_COMPATIBILIDADE,
+                pc.QT_PERMITIDA
             FROM RL_PROCEDIMENTO_COMPATIVEL pc
             INNER JOIN TB_PROCEDIMENTO pr ON pc.CO_PROCEDIMENTO_COMPATIVEL = pr.CO_PROCEDIMENTO
             WHERE pc.CO_PROCEDIMENTO_PRINCIPAL = @coProcedimento
@@ -695,10 +697,34 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_PROCEDIMENTO") ?? string.Empty;
                 var descricao = LerCampoTextoDoBlob(reader, "NO_PROCEDIMENTO_BLOB", "NO_PROCEDIMENTO");
                 
+                // Formatar informações adicionais
+                var informacoesAdicionais = new List<string>();
+                
+                var tipoCompatibilidade = FirebirdReaderHelper.GetStringSafe(reader, "TP_COMPATIBILIDADE");
+                if (!string.IsNullOrEmpty(tipoCompatibilidade))
+                {
+                    informacoesAdicionais.Add($"Tipo: {tipoCompatibilidade}");
+                }
+                
+                var qtPermitidaOrdinal = reader.GetOrdinal("QT_PERMITIDA");
+                if (!reader.IsDBNull(qtPermitidaOrdinal))
+                {
+                    var qtPermitida = reader.GetInt32(qtPermitidaOrdinal);
+                    if (qtPermitida > 0)
+                    {
+                        informacoesAdicionais.Add($"Qtd. Permitida: {qtPermitida}");
+                    }
+                }
+                
+                var informacaoAdicional = informacoesAdicionais.Any() 
+                    ? string.Join(" | ", informacoesAdicionais) 
+                    : null;
+                
                 itens.Add(new RelacionadoItem
                 {
                     Codigo = codigo,
-                    Descricao = descricao
+                    Descricao = descricao,
+                    InformacaoAdicional = informacaoAdicional
                 });
             }
         }
@@ -744,11 +770,17 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 var descricao = LerCampoTextoDoBlob(reader, "NO_HABILITACAO_BLOB", "NO_HABILITACAO");
                 var grupo = FirebirdReaderHelper.GetStringSafe(reader, "NU_GRUPO_HABILITACAO");
                 
+                // Para Habilitações, o InformacaoAdicional será usado para exibir o Grupo
+                // Se não houver grupo, usa string vazia para que a UI possa formatar como "Sem grupo" em vermelho
+                var informacaoAdicional = !string.IsNullOrWhiteSpace(grupo) 
+                    ? grupo 
+                    : string.Empty; // String vazia indica que não há grupo
+                
                 itens.Add(new RelacionadoItem
                 {
                     Codigo = codigo,
                     Descricao = descricao,
-                    InformacaoAdicional = !string.IsNullOrEmpty(grupo) ? $"Grupo: {grupo}" : null
+                    InformacaoAdicional = informacaoAdicional
                 });
             }
         }
@@ -791,10 +823,12 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_OCUPACAO") ?? string.Empty;
                 var descricao = LerCampoTextoDoBlob(reader, "NO_OCUPACAO_BLOB", "NO_OCUPACAO");
                 
+                // Para CBO, InformacaoAdicional será usado para exibir a competência na coluna "Comp."
                 itens.Add(new RelacionadoItem
                 {
                     Codigo = codigo,
-                    Descricao = descricao
+                    Descricao = descricao,
+                    InformacaoAdicional = competencia // Competência será exibida na coluna "Comp."
                 });
             }
         }
@@ -807,24 +841,29 @@ public class ProcedimentoRepository : IProcedimentoRepository
         return itens;
     }
 
-    public async Task<IEnumerable<RelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<ServicoRelacionadoItem>> BuscarServicosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
     {
         const string sql = @"
             SELECT 
                 s.CO_SERVICO,
                 CAST(s.NO_SERVICO AS BLOB) AS NO_SERVICO_BLOB,
                 s.NO_SERVICO,
-                ps.CO_CLASSIFICACAO
+                ps.CO_CLASSIFICACAO,
+                CAST(sc.NO_CLASSIFICACAO AS BLOB) AS NO_CLASSIFICACAO_BLOB,
+                sc.NO_CLASSIFICACAO
             FROM RL_PROCEDIMENTO_SERVICO ps
             INNER JOIN TB_SERVICO s ON ps.CO_SERVICO = s.CO_SERVICO
+            LEFT JOIN TB_SERVICO_CLASSIFICACAO sc ON ps.CO_CLASSIFICACAO = sc.CO_CLASSIFICACAO 
+                AND sc.CO_SERVICO = ps.CO_SERVICO
+                AND sc.DT_COMPETENCIA = ps.DT_COMPETENCIA
             WHERE ps.CO_PROCEDIMENTO = @coProcedimento
               AND ps.DT_COMPETENCIA = @competencia
               AND s.DT_COMPETENCIA = @competencia
-            ORDER BY s.CO_SERVICO";
+            ORDER BY s.CO_SERVICO, ps.CO_CLASSIFICACAO";
 
         await _context.OpenAsync(cancellationToken);
 
-        var itens = new List<RelacionadoItem>();
+        var itens = new List<ServicoRelacionadoItem>();
 
         using var command = new FbCommand(sql, _context.Connection);
         command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
@@ -836,15 +875,18 @@ public class ProcedimentoRepository : IProcedimentoRepository
 
             while (await reader.ReadAsync(cancellationToken))
             {
-                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_SERVICO") ?? string.Empty;
-                var descricao = LerCampoTextoDoBlob(reader, "NO_SERVICO_BLOB", "NO_SERVICO");
-                var classificacao = FirebirdReaderHelper.GetStringSafe(reader, "CO_CLASSIFICACAO");
+                var codigoServico = FirebirdReaderHelper.GetStringSafe(reader, "CO_SERVICO") ?? string.Empty;
+                var descricaoServico = LerCampoTextoDoBlob(reader, "NO_SERVICO_BLOB", "NO_SERVICO");
+                var codigoClassificacao = FirebirdReaderHelper.GetStringSafe(reader, "CO_CLASSIFICACAO");
+                var descricaoClassificacao = LerCampoTextoDoBlob(reader, "NO_CLASSIFICACAO_BLOB", "NO_CLASSIFICACAO");
                 
-                itens.Add(new RelacionadoItem
+                itens.Add(new ServicoRelacionadoItem
                 {
-                    Codigo = codigo,
-                    Descricao = descricao,
-                    InformacaoAdicional = !string.IsNullOrEmpty(classificacao) ? $"Classificação: {classificacao}" : null
+                    Codigo = codigoServico,
+                    Descricao = descricaoServico,
+                    CodigoClassificacao = codigoClassificacao,
+                    DescricaoClassificacao = descricaoClassificacao,
+                    Competencia = competencia
                 });
             }
         }
@@ -866,10 +908,72 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 tl.NO_TIPO_LEITO
             FROM RL_PROCEDIMENTO_LEITO pl
             INNER JOIN TB_TIPO_LEITO tl ON pl.CO_TIPO_LEITO = tl.CO_TIPO_LEITO
+                AND tl.DT_COMPETENCIA = (
+                    SELECT MAX(DT_COMPETENCIA)
+                    FROM TB_TIPO_LEITO tl2
+                    WHERE tl2.CO_TIPO_LEITO = tl.CO_TIPO_LEITO
+                      AND tl2.DT_COMPETENCIA <= @competencia
+                )
             WHERE pl.CO_PROCEDIMENTO = @coProcedimento
               AND pl.DT_COMPETENCIA = @competencia
-              AND tl.DT_COMPETENCIA = @competencia
             ORDER BY tl.CO_TIPO_LEITO";
+
+        _logger.LogInformation("BuscarTiposLeitoRelacionadosAsync: Iniciando busca para procedimento {Procedimento} na competência {Competencia}", 
+            coProcedimento, competencia);
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            
+            _logger.LogInformation("BuscarTiposLeitoRelacionadosAsync: Reader criado, iniciando leitura dos registros...");
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_TIPO_LEITO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_TIPO_LEITO_BLOB", "NO_TIPO_LEITO");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao
+                });
+            }
+            
+            _logger.LogInformation("BuscarTiposLeitoRelacionadosAsync: Encontrados {Count} tipos de leito para procedimento {Procedimento} na competência {Competencia}", 
+                itens.Count, coProcedimento, competencia);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar tipos de leito relacionados ao procedimento {Procedimento} na competência {Competencia}", 
+                coProcedimento, competencia);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarInstrumentosRegistroRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                reg.CO_REGISTRO,
+                CAST(reg.NO_REGISTRO AS BLOB) AS NO_REGISTRO_BLOB,
+                reg.NO_REGISTRO,
+                prreg.DT_COMPETENCIA
+            FROM RL_PROCEDIMENTO_REGISTRO prreg
+            INNER JOIN TB_REGISTRO reg ON prreg.CO_REGISTRO = reg.CO_REGISTRO
+            WHERE prreg.CO_PROCEDIMENTO = @coProcedimento
+              AND prreg.DT_COMPETENCIA = @competencia
+              AND reg.DT_COMPETENCIA = @competencia
+            ORDER BY reg.CO_REGISTRO";
 
         await _context.OpenAsync(cancellationToken);
 
@@ -885,19 +989,21 @@ public class ProcedimentoRepository : IProcedimentoRepository
 
             while (await reader.ReadAsync(cancellationToken))
             {
-                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_TIPO_LEITO") ?? string.Empty;
-                var descricao = LerCampoTextoDoBlob(reader, "NO_TIPO_LEITO_BLOB", "NO_TIPO_LEITO");
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_REGISTRO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_REGISTRO_BLOB", "NO_REGISTRO");
+                var dtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA");
                 
                 itens.Add(new RelacionadoItem
                 {
                     Codigo = codigo,
-                    Descricao = descricao
+                    Descricao = descricao,
+                    InformacaoAdicional = dtCompetencia
                 });
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao buscar tipos de leito relacionados ao procedimento {Procedimento}", coProcedimento);
+            _logger.LogError(ex, "Erro ao buscar instrumentos de registro relacionados ao procedimento {Procedimento}", coProcedimento);
             throw;
         }
 
@@ -910,7 +1016,8 @@ public class ProcedimentoRepository : IProcedimentoRepository
             SELECT 
                 m.CO_MODALIDADE,
                 CAST(m.NO_MODALIDADE AS BLOB) AS NO_MODALIDADE_BLOB,
-                m.NO_MODALIDADE
+                m.NO_MODALIDADE,
+                pm.DT_COMPETENCIA
             FROM RL_PROCEDIMENTO_MODALIDADE pm
             INNER JOIN TB_MODALIDADE m ON pm.CO_MODALIDADE = m.CO_MODALIDADE
             WHERE pm.CO_PROCEDIMENTO = @coProcedimento
@@ -934,11 +1041,13 @@ public class ProcedimentoRepository : IProcedimentoRepository
             {
                 var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_MODALIDADE") ?? string.Empty;
                 var descricao = LerCampoTextoDoBlob(reader, "NO_MODALIDADE_BLOB", "NO_MODALIDADE");
+                var dtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA");
                 
                 itens.Add(new RelacionadoItem
                 {
                     Codigo = codigo,
-                    Descricao = descricao
+                    Descricao = descricao,
+                    InformacaoAdicional = dtCompetencia
                 });
             }
         }
@@ -989,6 +1098,148 @@ public class ProcedimentoRepository : IProcedimentoRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao buscar descrição relacionada ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarDetalhesRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                d.CO_DETALHE,
+                CAST(d.NO_DETALHE AS BLOB) AS NO_DETALHE_BLOB,
+                d.NO_DETALHE,
+                pd.DT_COMPETENCIA,
+                CAST(dd.DS_DETALHE AS BLOB) AS DS_DETALHE_BLOB,
+                dd.DS_DETALHE
+            FROM RL_PROCEDIMENTO_DETALHE pd
+            INNER JOIN TB_DETALHE d ON pd.CO_DETALHE = d.CO_DETALHE
+            LEFT JOIN TB_DESCRICAO_DETALHE dd ON d.CO_DETALHE = dd.CO_DETALHE 
+                AND d.DT_COMPETENCIA = dd.DT_COMPETENCIA
+            WHERE pd.CO_PROCEDIMENTO = @coProcedimento
+              AND pd.DT_COMPETENCIA = @competencia
+              AND d.DT_COMPETENCIA = @competencia
+            ORDER BY d.CO_DETALHE";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_DETALHE") ?? string.Empty;
+                var nomeDetalhe = LerCampoTextoDoBlob(reader, "NO_DETALHE_BLOB", "NO_DETALHE");
+                var dtCompetencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA");
+                var descricaoLonga = LerCampoTextoDoBlob(reader, "DS_DETALHE_BLOB", "DS_DETALHE");
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = nomeDetalhe ?? string.Empty, // Nome curto para o grid
+                    InformacaoAdicional = dtCompetencia,
+                    DescricaoCompleta = descricaoLonga // Descrição longa para o campo de texto
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar detalhes relacionados ao procedimento {Procedimento}", coProcedimento);
+            throw;
+        }
+
+        return itens;
+    }
+
+    public async Task<IEnumerable<RelacionadoItem>> BuscarIncrementosRelacionadosAsync(string coProcedimento, string competencia, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+            SELECT 
+                pi.CO_HABILITACAO,
+                h.CO_HABILITACAO AS HAB_CODIGO,
+                CAST(h.NO_HABILITACAO AS BLOB) AS NO_HABILITACAO_BLOB,
+                h.NO_HABILITACAO,
+                pi.VL_PERCENTUAL_SH,
+                pi.VL_PERCENTUAL_SA,
+                pi.VL_PERCENTUAL_SP
+            FROM RL_PROCEDIMENTO_INCREMENTO pi
+            LEFT JOIN TB_HABILITACAO h ON pi.CO_HABILITACAO = h.CO_HABILITACAO 
+                AND h.DT_COMPETENCIA = (
+                    SELECT MAX(DT_COMPETENCIA)
+                    FROM TB_HABILITACAO h2
+                    WHERE h2.CO_HABILITACAO = h.CO_HABILITACAO
+                      AND h2.DT_COMPETENCIA <= @competencia
+                )
+            WHERE pi.CO_PROCEDIMENTO = @coProcedimento
+              AND pi.DT_COMPETENCIA = @competencia
+            ORDER BY pi.CO_HABILITACAO";
+
+        await _context.OpenAsync(cancellationToken);
+
+        var itens = new List<RelacionadoItem>();
+
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@coProcedimento", coProcedimento);
+        command.Parameters.AddWithValue("@competencia", competencia);
+
+        try
+        {
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var codigo = FirebirdReaderHelper.GetStringSafe(reader, "CO_HABILITACAO") ?? string.Empty;
+                var descricao = LerCampoTextoDoBlob(reader, "NO_HABILITACAO_BLOB", "NO_HABILITACAO");
+                
+                // Formatar informações adicionais com os percentuais
+                var percentuais = new List<string>();
+                
+                var percentualSH = reader.IsDBNull(reader.GetOrdinal("VL_PERCENTUAL_SH")) 
+                    ? (double?)null 
+                    : reader.GetDouble(reader.GetOrdinal("VL_PERCENTUAL_SH"));
+                if (percentualSH.HasValue)
+                {
+                    percentuais.Add($"SH: {percentualSH.Value:F2}%");
+                }
+                
+                var percentualSA = reader.IsDBNull(reader.GetOrdinal("VL_PERCENTUAL_SA")) 
+                    ? (double?)null 
+                    : reader.GetDouble(reader.GetOrdinal("VL_PERCENTUAL_SA"));
+                if (percentualSA.HasValue)
+                {
+                    percentuais.Add($"SA: {percentualSA.Value:F2}%");
+                }
+                
+                var percentualSP = reader.IsDBNull(reader.GetOrdinal("VL_PERCENTUAL_SP")) 
+                    ? (double?)null 
+                    : reader.GetDouble(reader.GetOrdinal("VL_PERCENTUAL_SP"));
+                if (percentualSP.HasValue)
+                {
+                    percentuais.Add($"SP: {percentualSP.Value:F2}%");
+                }
+                
+                var informacaoAdicional = percentuais.Any() ? string.Join(", ", percentuais) : null;
+                
+                itens.Add(new RelacionadoItem
+                {
+                    Codigo = codigo,
+                    Descricao = descricao ?? "Habilitação sem descrição",
+                    InformacaoAdicional = informacaoAdicional
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar incrementos relacionados ao procedimento {Procedimento}", coProcedimento);
             throw;
         }
 

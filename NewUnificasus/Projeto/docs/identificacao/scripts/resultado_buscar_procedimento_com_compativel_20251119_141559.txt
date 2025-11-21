@@ -1,0 +1,49 @@
+﻿
+CO_PROCEDIMENTO_PRINCIPAL PRINC_COD    PRINC_NOME_BLOB PRINC_NOME                                                                                                                                                                                                                                                 CO_PROCEDIMENTO_COMPATIVEL COMPAT_COD  COMPAT_NOME_BLOB COMPAT_NOME                                                                                                                                                                                                                                                DT_COMPETENCIA TP_COMPATIBILIDADE QT_PERMITIDA 
+========================= ========== ================= =============================================================================== ========================== ========== ================= =============================================================================== ============== ================== ============ 
+0201010143                0201010143               0:2 BIOPSIA DE ENDOCARDIO / MIOCARDIO                                                                                                                                                                                                                          0802020011                 0802020011               0:1 MONITORAMENTO DE CIRCULACAO EXTRACORPOREA                                                                                                                                                                                                                  200801         1                             0 
+==============================================================================
+PRINC_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+COMPAT_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0211070092                0211070092               0:4 AVALIACAO P/ DIAGNOSTICO DE DEFICIENCIA AUDITIVA                                                                                                                                                                                                           0211070041                 0211070041               0:3 AUDIOMETRIA TONAL LIMIAR (VIA AEREA / OSSEA)                                                                                                                                                                                                               201210         1                             1 
+==============================================================================
+PRINC_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+COMPAT_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0211070092                0211070092               0:6 AVALIACAO P/ DIAGNOSTICO DE DEFICIENCIA AUDITIVA                                                                                                                                                                                                           0211070203                 0211070203               0:5 IMITANCIOMETRIA                                                                                                                                                                                                                                            201210         1                             1 
+==============================================================================
+PRINC_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+COMPAT_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0211070092                0211070092               0:8 AVALIACAO P/ DIAGNOSTICO DE DEFICIENCIA AUDITIVA                                                                                                                                                                                                           0211070211                 0211070211               0:7 LOGOAUDIOMETRIA (LDV-IRF-LRF)                                                                                                                                                                                                                              201210         1                             1 
+==============================================================================
+PRINC_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+COMPAT_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+0211070092                0211070092               0:a AVALIACAO P/ DIAGNOSTICO DE DEFICIENCIA AUDITIVA                                                                                                                                                                                                           0211070041                 0211070041               0:9 AUDIOMETRIA TONAL LIMIAR (VIA AEREA / OSSEA)                                                                                                                                                                                                               201212         1                             1 
+==============================================================================
+PRINC_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+==============================================================================
+COMPAT_NOME_BLOB:  
+BLOB display set to subtype 1. This BLOB: subtype = 0
+==============================================================================
+

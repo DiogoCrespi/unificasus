@@ -1,0 +1,39 @@
+
+      INDICE CO_REGISTRO DT_COMPETENCIA NO_REGISTRO                                        
+============ =========== ============== ================================================== 
+         358 01          201108         BPA (CONSOLIDADO)                                  
+
+
+      INDICE CO_PROCEDIMENTO CO_REGISTRO DT_COMPETENCIA NO_REGISTRO                                        
+============ =============== =========== ============== ================================================== 
+      222237 0201010526      02          201108         <null>                                             
+
+
+TABELA                                   TOTAL 
+======================== ===================== 
+TB_REGISTRO                                816 
+RL_PROCEDIMENTO_REGISTRO                588611 
+
+
+      INDICE CO_REGISTRO DT_COMPETENCIA NO_REGISTRO                                        
+============ =========== ============== ================================================== 
+         358 01          201108         BPA (CONSOLIDADO)                                  
+         365 01          201109         BPA (CONSOLIDADO)                                  
+         372 01          201110         BPA (CONSOLIDADO)                                  
+         379 01          201111         BPA (CONSOLIDADO)                                  
+         386 01          201112         BPA (CONSOLIDADO)                                  
+         393 01          201201         BPA (CONSOLIDADO)                                  
+         400 01          201202         BPA (CONSOLIDADO)                                  
+         407 01          201203         BPA (CONSOLIDADO)                                  
+         414 01          201204         BPA (CONSOLIDADO)                                  
+         422 01          201205         BPA (CONSOLIDADO)                                  
+
+
+CO_PROCEDIMENTO NOME_PROCEDIMENTO                                                                                    CO_REGISTRO NOME_REGISTRO                                                                                        
+=============== =============================================================================== =========== =============================================================================== 
+0101010010      ATIVIDADE EDUCATIVA / ORIENTAÇÃO EM GRUPO NA ATENÇÃO BÁSICA                                          01          BPA (CONSOLIDADO)                                                                                    
+0101010010      ATIVIDADE EDUCATIVA / ORIENTAÇÃO EM GRUPO NA ATENÇÃO BÁSICA                                          01          BPA (CONSOLIDADO)                                                                                    
+0101010010      ATIVIDADE EDUCATIVA / ORIENTAÇÃO EM GRUPO NA ATENÇÃO BÁSICA                                          01          BPA (CONSOLIDADO)                                                                                    
+0101010010      ATIVIDADE EDUCATIVA / ORIENTAÇÃO EM GRUPO NA ATENÇÃO BÁSICA                                          01          BPA (CONSOLIDADO)                                                                                    
+0101010010      ATIVIDADE EDUCATIVA / ORIENTAÇÃO EM GRUPO NA ATENÇÃO BÁSICA                                          01          BPA (CONSOLIDADO)                                                                                    
+

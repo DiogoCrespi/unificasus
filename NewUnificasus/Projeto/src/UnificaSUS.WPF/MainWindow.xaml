@@ -285,81 +285,102 @@
 
             <!-- Painel Direito: Filtros e Ações -->
             <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="5">
-                <StackPanel>
-                    <!-- Menu Dropdown de Filtros -->
-                    <ComboBox x:Name="FiltrosComboBox" 
-                              Margin="0,0,0,5"
-                              SelectedIndex="0"
-                              ToolTip="Selecione o tipo de filtro para buscar itens relacionados ao procedimento">
-                        <ComboBoxItem Content="Cid10" ToolTip="CID-10 relacionado ao procedimento"/>
-                        <ComboBoxItem Content="Compatíveis" ToolTip="Procedimentos compatíveis"/>
-                        <ComboBoxItem Content="Habilitação" ToolTip="Habilitações relacionadas"/>
-                        <ComboBoxItem Content="CBO" ToolTip="CBO (Código Brasileiro de Ocupações) relacionado"/>
-                        <ComboBoxItem Content="Serviços" ToolTip="Serviços relacionados"/>
-                        <ComboBoxItem Content="Tipo de Leito" ToolTip="Tipos de leito relacionados"/>
-                        <ComboBoxItem Content="Modalidade" ToolTip="Modalidades relacionadas"/>
-                        <ComboBoxItem Content="Instrumento de Registro" ToolTip="Instrumentos de registro relacionados"/>
-                        <ComboBoxItem Content="Detalhes" ToolTip="Detalhes relacionados"/>
-                        <ComboBoxItem Content="Incremento" ToolTip="Incrementos relacionados"/>
-                        <ComboBoxItem Content="Descrição" ToolTip="Descrição do procedimento"/>
-                    </ComboBox>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Botão de Confirmação para Buscar Relacionados -->
-                    <Button Content="Buscar Relacionados" 
-                            Background="LightGreen" 
-                            Padding="10,5" 
-                            Margin="0,0,0,10"
-                            Click="BuscarRelacionados_Click"
-                            ToolTip="Busca itens relacionados ao procedimento selecionado conforme o filtro escolhido"/>
+                    <StackPanel Grid.Row="0">
+                        <!-- Menu Dropdown de Filtros -->
+                        <ComboBox x:Name="FiltrosComboBox" 
+                                  Margin="0,0,0,5"
+                                  SelectedIndex="0"
+                                  SelectionChanged="FiltrosComboBox_SelectionChanged"
+                                  ToolTip="Selecione o tipo de filtro para buscar itens relacionados ao procedimento">
+                            <ComboBoxItem Content="Cid10" ToolTip="CID-10 relacionado ao procedimento"/>
+                            <ComboBoxItem Content="Compatíveis" ToolTip="Procedimentos compatíveis"/>
+                            <ComboBoxItem Content="Habilitação" ToolTip="Habilitações relacionadas"/>
+                            <ComboBoxItem Content="CBO" ToolTip="CBO (Código Brasileiro de Ocupações) relacionado"/>
+                            <ComboBoxItem Content="Serviços" ToolTip="Serviços relacionados"/>
+                            <ComboBoxItem Content="Tipo de Leito" ToolTip="Tipos de leito relacionados"/>
+                            <ComboBoxItem Content="Modalidade" ToolTip="Modalidades relacionadas"/>
+                            <ComboBoxItem Content="Instrumento de Registro" ToolTip="Instrumentos de registro relacionados"/>
+                            <ComboBoxItem Content="Detalhes" ToolTip="Detalhes relacionados"/>
+                            <ComboBoxItem Content="Incremento" ToolTip="Incrementos relacionados"/>
+                            <ComboBoxItem Content="Descrição" ToolTip="Descrição do procedimento"/>
+                        </ComboBox>
 
-                    <!-- Botões de Ação -->
-                    <Button Content="Notas da Versão" 
-                            Background="LightBlue" 
-                            Padding="10,5" 
-                            Margin="0,0,0,5"
-                            Click="NotasVersao_Click"
-                            ToolTip="Exibe as notas e informações da versão atual"/>
+                        <!-- Botão de Confirmação para Buscar Relacionados -->
+                        <Button Content="Buscar Relacionados" 
+                                Background="LightGreen" 
+                                Padding="10,5" 
+                                Margin="0,0,0,10"
+                                Click="BuscarRelacionados_Click"
+                                ToolTip="Busca itens relacionados ao procedimento selecionado conforme o filtro escolhido"/>
 
-                    <Button Content="Cadastrar Serviço/Classificação" 
-                            IsEnabled="False"
-                            Padding="10,5" 
-                            Margin="0,0,0,5"
-                            Click="CadastrarServico_Click"
-                            ToolTip="Cadastrar novo serviço ou classificação (indisponível)"/>
-
-                    <Button Content="ATIVAR COMPETÊNCIA" 
-                            Background="LightBlue" 
-                            FontWeight="Bold"
-                            Padding="10,5" 
-                            Margin="0,0,0,10"
-                            Click="AtivarCompetencia_Click"
-                            ToolTip="Ativa a competência selecionada para uso no sistema"/>
-
-                    <!-- Seleção de Competência -->
-                    <Label Content="Competência:" Margin="0,0,0,5" ToolTip="Selecione a competência desejada"/>
-                    <Grid Margin="0,0,0,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="CompetenciaComboBox" 
-                                  Grid.Column="0"
-                                  Margin="0,0,5,0"
-                                  VerticalContentAlignment="Center"
-                                  SelectionChanged="CompetenciaComboBox_SelectionChanged"
-                                  ToolTip="Lista de competências disponíveis. Selecione uma e clique no botão de confirmação para ativar"/>
-                        
-                        <Button Content="✓" 
-                                Grid.Column="1"
+                        <!-- Botões de Ação -->
+                        <Button Content="Notas da Versão" 
                                 Background="LightBlue" 
-                                Foreground="White"
+                                Padding="10,5" 
+                                Margin="0,0,0,5"
+                                Click="NotasVersao_Click"
+                                ToolTip="Exibe as notas e informações da versão atual"/>
+
+                        <Button Content="Cadastrar Serviço/Classificação" 
+                                IsEnabled="False"
+                                Padding="10,5" 
+                                Margin="0,0,0,5"
+                                Click="CadastrarServico_Click"
+                                ToolTip="Cadastrar novo serviço ou classificação (indisponível)"/>
+
+                        <Button Content="ATIVAR COMPETÊNCIA" 
+                                Background="LightBlue" 
                                 FontWeight="Bold"
-                                Width="30" 
-                                Height="30"
-                                Click="ConfirmarCompetencia_Click"
-                                ToolTip="Confirma e ativa a competência selecionada"/>
-                    </Grid>
-                </StackPanel>
+                                Padding="10,5" 
+                                Margin="0,0,0,10"
+                                Click="AtivarCompetencia_Click"
+                                ToolTip="Ativa a competência selecionada para uso no sistema"/>
+
+                        <!-- Seleção de Competência -->
+                        <Label Content="Competência:" Margin="0,0,0,5" ToolTip="Selecione a competência desejada"/>
+                        <Grid Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="CompetenciaComboBox" 
+                                      Grid.Column="0"
+                                      Margin="0,0,5,0"
+                                      VerticalContentAlignment="Center"
+                                      SelectionChanged="CompetenciaComboBox_SelectionChanged"
+                                      ToolTip="Lista de competências disponíveis. Selecione uma e clique no botão de confirmação para ativar"/>
+                            
+                            <Button Content="✓" 
+                                    Grid.Column="1"
+                                    Background="LightBlue" 
+                                    Foreground="White"
+                                    FontWeight="Bold"
+                                    Width="30" 
+                                    Height="30"
+                                    Click="ConfirmarCompetencia_Click"
+                                    ToolTip="Confirma e ativa a competência selecionada"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Área para exibição dinâmica dos relacionados -->
+                    <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,5,0,0">
+                        <Grid x:Name="AreaRelacionados" Background="WhiteSmoke">
+                            <TextBlock Text="Selecione um procedimento para ver os itens relacionados." 
+                                       TextWrapping="Wrap" 
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center"
+                                       Foreground="Gray"
+                                       FontStyle="Italic"
+                                       Margin="10"/>
+                        </Grid>
+                    </Border>
+                </Grid>
             </Border>
         </Grid>
 

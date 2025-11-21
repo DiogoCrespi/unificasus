@@ -1,0 +1,7 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_PROCEDIMENTO_SERVICO         TABELA 
+TB_SERVICO                      TABELA 
+TB_SERVICO_CLASSIFICACAO        TABELA 
+

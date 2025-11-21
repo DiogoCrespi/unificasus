@@ -92,13 +92,17 @@ public partial class RelatoriosWindow : Window
             if (ComboBoxItens == null || StatusTextBlock == null)
                 return;
 
-            StatusTextBlock.Text = "Carregando itens...";
+            // Mostrar indicador de carregamento
+            StatusTextBlock.Text = $"Carregando {_tipoFiltroAtual}...";
+            ComboBoxItens.IsEnabled = false;
             
             IEnumerable<ItemRelatorio> itens = _tipoFiltroAtual switch
             {
                 "Grupo" => await _relatorioService.BuscarGruposDisponiveisAsync(_competencia, null),
                 "Sub-grupo" => await _relatorioService.BuscarSubGruposDisponiveisAsync(_competencia, null),
                 "Forma de organização" => await _relatorioService.BuscarFormasOrganizacaoDisponiveisAsync(_competencia, null),
+                "Tipo de Leito" => await _relatorioService.BuscarTiposLeitoDisponiveisAsync(_competencia, null),
+                "Instrumento de Registro" => await _relatorioService.BuscarInstrumentosRegistroDisponiveisAsync(_competencia, null),
                 "Procedimento" => await _relatorioService.BuscarProcedimentosDisponiveisAsync(_competencia, null),
                 _ => Enumerable.Empty<ItemRelatorio>()
             };
@@ -114,13 +118,15 @@ public partial class RelatoriosWindow : Window
                     StatusTextBlock.Text = $"Nenhum item encontrado para {_tipoFiltroAtual} na competência {_competencia}";
                     ComboBoxItens.ItemsSource = null;
                     ComboBoxItens.SelectedItem = null;
+                    ComboBoxItens.IsEnabled = true;
                     MessageBox.Show($"Nenhum item encontrado para '{_tipoFiltroAtual}' na competência {FormatCompetencia(_competencia)}.\n\nVerifique se há dados para esta competência no banco de dados.", 
                                   "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
                     ComboBoxItens.ItemsSource = listaItens;
-                    StatusTextBlock.Text = $"Filtro selecionado: {_tipoFiltroAtual} - {listaItens.Count} itens disponíveis";
+                    StatusTextBlock.Text = $"{_tipoFiltroAtual}: {listaItens.Count} itens carregados";
+                    ComboBoxItens.IsEnabled = true;
                     
                     // Pré-seleciona o primeiro item da lista
                     if (listaItens.Count > 0)
@@ -140,6 +146,7 @@ public partial class RelatoriosWindow : Window
         {
             MessageBox.Show($"Erro ao carregar itens:\n{ex.Message}\n\nStack Trace:\n{ex.StackTrace}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
             StatusTextBlock.Text = $"Erro ao carregar itens: {ex.Message}";
+            ComboBoxItens.IsEnabled = true;
         }
     }
 
@@ -207,6 +214,8 @@ public partial class RelatoriosWindow : Window
                         "Grupo" => await _relatorioService.BuscarGruposDisponiveisAsync(_competencia, textoDigitado),
                         "Sub-grupo" => await _relatorioService.BuscarSubGruposDisponiveisAsync(_competencia, textoDigitado),
                         "Forma de organização" => await _relatorioService.BuscarFormasOrganizacaoDisponiveisAsync(_competencia, textoDigitado),
+                        "Tipo de Leito" => await _relatorioService.BuscarTiposLeitoDisponiveisAsync(_competencia, textoDigitado),
+                        "Instrumento de Registro" => await _relatorioService.BuscarInstrumentosRegistroDisponiveisAsync(_competencia, textoDigitado),
                         "Procedimento" => await _relatorioService.BuscarProcedimentosDisponiveisAsync(_competencia, textoDigitado),
                         _ => Enumerable.Empty<ItemRelatorio>()
                     };

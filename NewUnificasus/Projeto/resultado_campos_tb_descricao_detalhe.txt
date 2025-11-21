@@ -1,0 +1,17 @@
+
+      INDICE CO_DETALHE        DS_DETALHE DT_COMPETENCIA 
+============ ========== ================= ============== 
+         532 033                     9f:0 201202         
+==============================================================================
+DS_DETALHE:  
+IDENTIFICA QUE A VALIDADE DA APAC É FIXADA EM 03 COMPETENCIAS. EM CASO DE NECESSIDADE DE FECHAR NA PRIMEIRA COMPETENCIA, TERÁ QUE SER FECHADO EM DEFINITIVO.
+==============================================================================
+
+
+CAMPO                           
+=============================== 
+INDICE                          
+CO_DETALHE                      
+DS_DETALHE                      
+DT_COMPETENCIA                  
+

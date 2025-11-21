@@ -1,0 +1,6 @@
+﻿
+TABELA                          TIPO   
+=============================== ====== 
+RL_PROCEDIMENTO_MODALIDADE      TABELA 
+TB_MODALIDADE                   TABELA 
+

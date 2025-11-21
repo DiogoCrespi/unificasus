@@ -81,5 +81,41 @@ public interface IRelatorioRepository
         string competencia, 
         string? filtro, 
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Busca tipos de leito disponíveis para seleção
+    /// </summary>
+    Task<IEnumerable<ItemRelatorio>> BuscarTiposLeitoDisponiveisAsync(
+        string competencia, 
+        string? filtro, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Busca procedimentos por tipo de leito
+    /// </summary>
+    Task<IEnumerable<ItemRelatorioProcedimento>> BuscarProcedimentosPorTipoLeitoAsync(
+        string coTipoLeito, 
+        string competencia, 
+        bool naoImprimirSPZerado, 
+        string ordenarPor, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Busca instrumentos de registro disponíveis para seleção
+    /// </summary>
+    Task<IEnumerable<ItemRelatorio>> BuscarInstrumentosRegistroDisponiveisAsync(
+        string competencia, 
+        string? filtro, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Busca procedimentos por instrumento de registro
+    /// </summary>
+    Task<IEnumerable<ItemRelatorioProcedimento>> BuscarProcedimentosPorInstrumentoRegistroAsync(
+        string coRegistro, 
+        string competencia, 
+        bool naoImprimirSPZerado, 
+        string ordenarPor, 
+        CancellationToken cancellationToken = default);
 }
 

@@ -101,6 +101,46 @@ public class RelatorioService
         return await _repository.BuscarProcedimentosDisponiveisAsync(competencia, filtro, cancellationToken);
     }
 
+    public async Task<IEnumerable<ItemRelatorio>> BuscarTiposLeitoDisponiveisAsync(
+        string competencia, 
+        string? filtro, 
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Buscando tipos de leito disponíveis para competência {Competencia}", competencia);
+        return await _repository.BuscarTiposLeitoDisponiveisAsync(competencia, filtro, cancellationToken);
+    }
+
+    public async Task<IEnumerable<ItemRelatorioProcedimento>> BuscarProcedimentosPorTipoLeitoAsync(
+        string coTipoLeito, 
+        string competencia, 
+        bool naoImprimirSPZerado, 
+        string ordenarPor, 
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Buscando procedimentos por tipo de leito {TipoLeito} para relatório", coTipoLeito);
+        return await _repository.BuscarProcedimentosPorTipoLeitoAsync(coTipoLeito, competencia, naoImprimirSPZerado, ordenarPor, cancellationToken);
+    }
+
+    public async Task<IEnumerable<ItemRelatorio>> BuscarInstrumentosRegistroDisponiveisAsync(
+        string competencia, 
+        string? filtro, 
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Buscando instrumentos de registro disponíveis para competência {Competencia}", competencia);
+        return await _repository.BuscarInstrumentosRegistroDisponiveisAsync(competencia, filtro, cancellationToken);
+    }
+
+    public async Task<IEnumerable<ItemRelatorioProcedimento>> BuscarProcedimentosPorInstrumentoRegistroAsync(
+        string coRegistro, 
+        string competencia, 
+        bool naoImprimirSPZerado, 
+        string ordenarPor, 
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Buscando procedimentos por instrumento de registro {Registro} para relatório", coRegistro);
+        return await _repository.BuscarProcedimentosPorInstrumentoRegistroAsync(coRegistro, competencia, naoImprimirSPZerado, ordenarPor, cancellationToken);
+    }
+
     /// <summary>
     /// Busca procedimentos para relatório baseado nos itens selecionados
     /// </summary>
@@ -137,6 +177,12 @@ public class RelatorioService
                     cancellationToken),
                 
                 "Procedimento" => await BuscarProcedimentosPorCodigoOuNomeAsync(
+                    item.Codigo, competencia, configuracao.NaoImprimirSPZerado, configuracao.OrdenarPor, cancellationToken),
+                
+                "TipoLeito" => await BuscarProcedimentosPorTipoLeitoAsync(
+                    item.Codigo, competencia, configuracao.NaoImprimirSPZerado, configuracao.OrdenarPor, cancellationToken),
+                
+                "InstrumentoRegistro" => await BuscarProcedimentosPorInstrumentoRegistroAsync(
                     item.Codigo, competencia, configuracao.NaoImprimirSPZerado, configuracao.OrdenarPor, cancellationToken),
                 
                 _ => Enumerable.Empty<ItemRelatorioProcedimento>()
