@@ -600,10 +600,12 @@ public class RelatorioRepository : IRelatorioRepository
                     {
                         byte[] validBytes = new byte[validLength];
                         Array.Copy(blobBytes, 0, validBytes, 0, validLength);
-                        // Converte diretamente para Windows-1252
-                        resultado = ConvertBytesToWindows1252(validBytes);
                         
-                        // Se a conversão resultou em caracteres corrompidos, tenta o helper
+                        // CORREÇÃO: Os dados são salvos como UTF-8 pelo driver, não Windows-1252
+                        // Converte de UTF-8 para string .NET (Unicode)
+                        resultado = Encoding.UTF8.GetString(validBytes);
+                        
+                        // Se a conversão resultou em caracteres corrompidos, tenta o helper como fallback
                         if (!string.IsNullOrEmpty(resultado) && 
                             (resultado.Contains('\uFFFD') || resultado.Contains('?')))
                         {
@@ -651,7 +653,16 @@ public class RelatorioRepository : IRelatorioRepository
 
         try
         {
-            var encoding = Encoding.GetEncoding(1252); // Windows-1252
+            // Obtém encoding Windows-1252 de forma segura
+            Encoding encoding;
+            try
+            {
+                encoding = Encoding.GetEncoding(1252);
+            }
+            catch
+            {
+                encoding = Encoding.GetEncoding("ISO-8859-1"); // Fallback
+            }
             return encoding.GetString(bytes);
         }
         catch

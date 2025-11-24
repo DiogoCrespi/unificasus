@@ -9,8 +9,59 @@ namespace UnificaSUS.Infrastructure.Helpers;
 /// </summary>
 public static class FirebirdReaderHelper
 {
-    private static readonly Encoding Windows1252 = Encoding.GetEncoding(1252);
-    private static readonly Encoding Latin1 = Encoding.GetEncoding("ISO-8859-1");
+    private static Encoding? _windows1252;
+    private static Encoding? _latin1;
+    private static readonly object _encodingLock = new object();
+
+    private static Encoding Windows1252
+    {
+        get
+        {
+            if (_windows1252 == null)
+            {
+                lock (_encodingLock)
+                {
+                    if (_windows1252 == null)
+                    {
+                        try
+                        {
+                            _windows1252 = Encoding.GetEncoding(1252);
+                        }
+                        catch
+                        {
+                            try
+                            {
+                                _windows1252 = Encoding.GetEncoding("Windows-1252");
+                            }
+                            catch
+                            {
+                                _windows1252 = Encoding.GetEncoding("ISO-8859-1");
+                            }
+                        }
+                    }
+                }
+            }
+            return _windows1252;
+        }
+    }
+
+    private static Encoding Latin1
+    {
+        get
+        {
+            if (_latin1 == null)
+            {
+                lock (_encodingLock)
+                {
+                    if (_latin1 == null)
+                    {
+                        _latin1 = Encoding.GetEncoding("ISO-8859-1");
+                    }
+                }
+            }
+            return _latin1;
+        }
+    }
 
     /// <summary>
     /// Lê uma string do reader com tratamento correto de encoding para acentuação
@@ -248,16 +299,29 @@ public static class FirebirdReaderHelper
     private static string? TryAlternativeEncodings(byte[] bytes)
     {
         // Lista de codificações para tentar (em ordem de probabilidade)
-        var encodings = new[]
+        var encodings = new List<Encoding>();
+        
+        // Tenta adicionar Windows-1252
+        try
         {
-            Encoding.GetEncoding(1252), // Windows-1252
-            Encoding.GetEncoding("ISO-8859-1"), // Latin1
-            Encoding.GetEncoding(850), // DOS Latin-1
-            Encoding.GetEncoding(437), // DOS US
-            Encoding.GetEncoding(1250), // Windows-1250 (Central Europe)
-            Encoding.GetEncoding(1251), // Windows-1251 (Cyrillic)
-            Encoding.Default // Encoding padrão do sistema
-        };
+            encodings.Add(Encoding.GetEncoding(1252));
+        }
+        catch
+        {
+            try
+            {
+                encodings.Add(Encoding.GetEncoding("Windows-1252"));
+            }
+            catch { }
+        }
+        
+        // Adiciona outros encodings
+        try { encodings.Add(Encoding.GetEncoding("ISO-8859-1")); } catch { }
+        try { encodings.Add(Encoding.GetEncoding(850)); } catch { }
+        try { encodings.Add(Encoding.GetEncoding(437)); } catch { }
+        try { encodings.Add(Encoding.GetEncoding(1250)); } catch { }
+        try { encodings.Add(Encoding.GetEncoding(1251)); } catch { }
+        encodings.Add(Encoding.Default); // Sempre disponível
 
         foreach (var encoding in encodings)
         {

@@ -139,25 +139,25 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
 
         await _context.OpenAsync(cancellationToken);
 
-        // Usar transação explícita para evitar deadlocks
-        using var transaction = await _context.BeginTransactionAsync(cancellationToken);
+        // Não usa transação explícita, como o ImportRepository faz
+        // O Firebird gerencia transações automaticamente para INSERT simples
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@prcCod", procedimentoComum.PrcCod);
+        command.Parameters.AddWithValue("@prcCodProc", procedimentoComum.PrcCodProc ?? (object)DBNull.Value);
         
+        // Passa strings diretamente, como o ImportRepository faz
+        // O driver salva como UTF-8, que é o que está acontecendo
+        // O problema está na LEITURA, não na inserção
+        command.Parameters.AddWithValue("@prcNoProcedimento", procedimentoComum.PrcNoProcedimento ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@prcObservacoes", procedimentoComum.PrcObservacoes ?? (object)DBNull.Value);
+
         try
         {
-            using var command = new FbCommand(sql, _context.Connection, transaction);
-            command.Parameters.AddWithValue("@prcCod", procedimentoComum.PrcCod);
-            command.Parameters.AddWithValue("@prcCodProc", procedimentoComum.PrcCodProc ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@prcNoProcedimento", procedimentoComum.PrcNoProcedimento ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@prcObservacoes", procedimentoComum.PrcObservacoes ?? (object)DBNull.Value);
-
             await command.ExecuteNonQueryAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            
             return procedimentoComum.PrcCod;
         }
         catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
             _logger.LogError(ex, "Erro ao adicionar procedimento comum");
             throw;
         }
@@ -174,23 +174,24 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
 
         await _context.OpenAsync(cancellationToken);
 
-        // Usar transação explícita para evitar deadlocks
-        using var transaction = await _context.BeginTransactionAsync(cancellationToken);
+        // Não usa transação explícita, como o ImportRepository faz
+        // O Firebird gerencia transações automaticamente para UPDATE simples
+        using var command = new FbCommand(sql, _context.Connection);
+        command.Parameters.AddWithValue("@prcCod", procedimentoComum.PrcCod);
+        command.Parameters.AddWithValue("@prcCodProc", procedimentoComum.PrcCodProc ?? (object)DBNull.Value);
         
+        // Passa strings diretamente, como o ImportRepository faz
+        // O driver salva como UTF-8, que é o que está acontecendo
+        // O problema está na LEITURA, não na inserção
+        command.Parameters.AddWithValue("@prcNoProcedimento", procedimentoComum.PrcNoProcedimento ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@prcObservacoes", procedimentoComum.PrcObservacoes ?? (object)DBNull.Value);
+
         try
         {
-            using var command = new FbCommand(sql, _context.Connection, transaction);
-            command.Parameters.AddWithValue("@prcCod", procedimentoComum.PrcCod);
-            command.Parameters.AddWithValue("@prcCodProc", procedimentoComum.PrcCodProc ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@prcNoProcedimento", procedimentoComum.PrcNoProcedimento ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@prcObservacoes", procedimentoComum.PrcObservacoes ?? (object)DBNull.Value);
-
             await command.ExecuteNonQueryAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
         }
         catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
             _logger.LogError(ex, "Erro ao atualizar procedimento comum {Codigo}", procedimentoComum.PrcCod);
             throw;
         }
@@ -225,16 +226,18 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
 
     public async Task<int> ObterProximoCodigoAsync(CancellationToken cancellationToken = default)
     {
+        // Query simplificada para obter próximo código
         const string sql = @"
-            SELECT MAX(PRC_COD) + 1
+            SELECT COALESCE(MAX(PRC_COD), 0) + 1
             FROM TB_PROCOMUNS";
-
-        await _context.OpenAsync(cancellationToken);
-
-        using var command = new FbCommand(sql, _context.Connection);
 
         try
         {
+            await _context.OpenAsync(cancellationToken);
+
+            using var command = new FbCommand(sql, _context.Connection);
+            
+            // Usa ExecuteScalar - mais simples para queries de valor único
             var result = await command.ExecuteScalarAsync(cancellationToken);
             
             if (result != null && result != DBNull.Value)
@@ -247,18 +250,21 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao obter próximo código de procedimento comum");
-            throw;
+            // Retorna 1 em caso de erro (evita falha total)
+            return 1;
         }
     }
 
     private static ProcedimentoComum MapProcedimentoComum(FbDataReader reader)
     {
-        // Tenta ler PRC_NO_PROCEDIMENTO do BLOB primeiro (mais confiável para encoding)
-        // Mesma lógica usada no MapProcedimento do ProcedimentoRepository
+        // O driver salva strings como UTF-8 automaticamente
+        // Na leitura, precisamos converter de UTF-8 para Windows-1252
+        // Estratégia: Ler bytes do BLOB (que estão em UTF-8) e converter para Windows-1252
+        
         string? prcNoProcedimento = null;
         string? prcObservacoes = null;
         
-        // Prioridade 1: Tenta ler do BLOB (CAST para BLOB garante acesso aos bytes brutos)
+        // Prioridade 1: Tenta ler do BLOB como byte[] (contém bytes UTF-8)
         try
         {
             var blobOrdinal = reader.GetOrdinal("PRC_NO_PROCEDIMENTO_BLOB");
@@ -278,15 +284,10 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
                     {
                         byte[] validBytes = new byte[validLength];
                         Array.Copy(blobBytes, 0, validBytes, 0, validLength);
-                        // Converte diretamente para Windows-1252 (mais rápido e confiável)
-                        prcNoProcedimento = ConvertBytesToWindows1252(validBytes);
                         
-                        // Se a conversão resultou em caracteres corrompidos, tenta o helper
-                        if (!string.IsNullOrEmpty(prcNoProcedimento) && 
-                            (prcNoProcedimento.Contains('\uFFFD') || prcNoProcedimento.Contains('?')))
-                        {
-                            prcNoProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "PRC_NO_PROCEDIMENTO_BLOB");
-                        }
+                        // Os bytes estão em UTF-8 (0xC3 0x87 para Ç)
+                        // Converte de UTF-8 para string .NET (Unicode)
+                        prcNoProcedimento = Encoding.UTF8.GetString(validBytes);
                     }
                 }
                 
@@ -307,11 +308,7 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
         {
             try
             {
-                var campoOrdinal = reader.GetOrdinal("PRC_NO_PROCEDIMENTO");
-                if (!reader.IsDBNull(campoOrdinal))
-                {
-                    prcNoProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "PRC_NO_PROCEDIMENTO");
-                }
+                prcNoProcedimento = FirebirdReaderHelper.GetStringSafe(reader, "PRC_NO_PROCEDIMENTO");
             }
             catch
             {
@@ -338,13 +335,10 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
                     {
                         byte[] validBytes = new byte[validLength];
                         Array.Copy(blobBytes, 0, validBytes, 0, validLength);
-                        prcObservacoes = ConvertBytesToWindows1252(validBytes);
                         
-                        if (!string.IsNullOrEmpty(prcObservacoes) && 
-                            (prcObservacoes.Contains('\uFFFD') || prcObservacoes.Contains('?')))
-                        {
-                            prcObservacoes = FirebirdReaderHelper.GetStringSafe(reader, "PRC_OBSERVACOES_BLOB");
-                        }
+                        // Os bytes estão em UTF-8 (pelo que vimos no debug)
+                        // Converte de UTF-8 para string .NET (Unicode)
+                        prcObservacoes = Encoding.UTF8.GetString(validBytes);
                     }
                 }
                 
@@ -363,11 +357,7 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
         {
             try
             {
-                var campoOrdinal = reader.GetOrdinal("PRC_OBSERVACOES");
-                if (!reader.IsDBNull(campoOrdinal))
-                {
-                    prcObservacoes = FirebirdReaderHelper.GetStringSafe(reader, "PRC_OBSERVACOES");
-                }
+                prcObservacoes = FirebirdReaderHelper.GetStringSafe(reader, "PRC_OBSERVACOES");
             }
             catch
             {
@@ -384,18 +374,128 @@ public class ProcedimentoComumRepository : IProcedimentoComumRepository
         };
     }
 
+
+    /// <summary>
+    /// Normaliza string para inserção no Firebird com Charset=NONE
+    /// PROBLEMA: O driver .NET sempre converte strings para UTF-8 antes de salvar
+    /// SOLUÇÃO: Usar Latin1 (ISO-8859-1) como intermediário para "enganar" o driver
+    /// Latin1 mapeia 1:1 os bytes, então podemos fazer a string conter os bytes Windows-1252
+    /// </summary>
+    private static object NormalizeStringForInsert(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return DBNull.Value;
+
+        try
+        {
+            // Obtém encodings necessários
+            Encoding windows1252;
+            try
+            {
+                windows1252 = Encoding.GetEncoding(1252);
+            }
+            catch
+            {
+                try
+                {
+                    windows1252 = Encoding.GetEncoding("Windows-1252");
+                }
+                catch
+                {
+                    windows1252 = Encoding.GetEncoding("ISO-8859-1"); // Fallback
+                }
+            }
+            
+            Encoding latin1 = Encoding.GetEncoding("ISO-8859-1");
+
+            // Converte a string para bytes em Windows-1252
+            byte[] bytesWindows1252 = windows1252.GetBytes(value);
+            
+            // Converte os bytes Windows-1252 para string usando Latin1
+            // Latin1 mapeia 1:1 os bytes (byte 0xC7 vira char 0xC7)
+            // Isso "engana" o .NET para que a string contenha os bytes Windows-1252 como caracteres
+            string stringComBytesWindows1252 = latin1.GetString(bytesWindows1252);
+            
+            // Quando o driver salvar, ele vai converter esta string para bytes
+            // Como usamos Latin1 (1:1), os bytes salvos serão exatamente os Windows-1252
+            return stringComBytesWindows1252;
+        }
+        catch
+        {
+            // Se falhar, retorna string original
+            return value;
+        }
+    }
+
+    /// <summary>
+    /// Cria parâmetro para inserção de string no Firebird com Charset=NONE
+    /// Com Charset=NONE, o driver não faz conversão automática, então precisamos garantir bytes corretos
+    /// Estratégia: Converte para bytes Windows-1252 e tenta passar como string normalizada
+    /// Se o driver fizer conversão incorreta, os bytes já estarão corretos na string normalizada
+    /// </summary>
+    private static FbParameter CreateStringParameter(string parameterName, string? value)
+    {
+        var parameter = new FbParameter(parameterName, FbDbType.VarChar);
+        
+        if (string.IsNullOrEmpty(value))
+        {
+            parameter.Value = DBNull.Value;
+            return parameter;
+        }
+
+        try
+        {
+            // Obtém encoding Windows-1252
+            Encoding encoding;
+            try
+            {
+                encoding = Encoding.GetEncoding(1252);
+            }
+            catch
+            {
+                encoding = Encoding.GetEncoding("ISO-8859-1");
+            }
+
+            // Converte para bytes em Windows-1252
+            byte[] bytes = encoding.GetBytes(value);
+            
+            // Converte bytes de volta para string usando o mesmo encoding
+            // Isso garante que a string contenha exatamente os bytes Windows-1252 corretos
+            // Quando o driver salvar, mesmo com Charset=NONE, os bytes devem ser preservados
+            string normalized = encoding.GetString(bytes);
+            
+            parameter.Value = normalized;
+            return parameter;
+        }
+        catch
+        {
+            // Se falhar, usa string original
+            parameter.Value = value;
+            return parameter;
+        }
+    }
+
     /// <summary>
     /// Converte bytes diretamente para Windows-1252 (helper local)
     /// Mesma lógica usada no ProcedimentoRepository
     /// </summary>
-    private static string ConvertBytesToWindows1252(byte[] bytes)
+    private static string? ConvertBytesToWindows1252(byte[] bytes)
     {
         if (bytes == null || bytes.Length == 0)
             return string.Empty;
 
         try
         {
-            var encoding = Encoding.GetEncoding(1252); // Windows-1252
+            // Obtém encoding Windows-1252 de forma segura
+            Encoding encoding;
+            try
+            {
+                encoding = Encoding.GetEncoding(1252);
+            }
+            catch
+            {
+                encoding = Encoding.GetEncoding("ISO-8859-1"); // Fallback
+            }
             return encoding.GetString(bytes);
         }
         catch

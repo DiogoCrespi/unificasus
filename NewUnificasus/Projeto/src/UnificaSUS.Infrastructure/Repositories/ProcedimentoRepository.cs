@@ -300,8 +300,8 @@ public class ProcedimentoRepository : IProcedimentoRepository
                 pr.DT_COMPETENCIA
             FROM TB_PROCEDIMENTO pr
             INNER JOIN RL_PROCEDIMENTO_CID pc ON pr.CO_PROCEDIMENTO = pc.CO_PROCEDIMENTO
-            WHERE pc.DT_COMPETENCIA = @competencia
-              AND pc.CO_CID = @cid
+            WHERE pc.CO_CID = @cid
+              AND pc.DT_COMPETENCIA = @competencia
             ORDER BY pr.CO_PROCEDIMENTO";
 
         await _context.OpenAsync(cancellationToken);
@@ -486,7 +486,16 @@ public class ProcedimentoRepository : IProcedimentoRepository
 
         try
         {
-            var encoding = Encoding.GetEncoding(1252); // Windows-1252
+            // Obtém encoding Windows-1252 de forma segura
+            Encoding encoding;
+            try
+            {
+                encoding = Encoding.GetEncoding(1252);
+            }
+            catch
+            {
+                encoding = Encoding.GetEncoding("ISO-8859-1"); // Fallback
+            }
             return encoding.GetString(bytes);
         }
         catch
@@ -550,10 +559,12 @@ public class ProcedimentoRepository : IProcedimentoRepository
                     {
                         byte[] validBytes = new byte[validLength];
                         Array.Copy(blobBytes, 0, validBytes, 0, validLength);
-                        // Converte diretamente para Windows-1252 (mais rápido e confiável)
-                        noProcedimento = ConvertBytesToWindows1252(validBytes);
                         
-                        // Se a conversão resultou em caracteres corrompidos, tenta o helper
+                        // CORREÇÃO: Os dados são salvos como UTF-8 pelo driver, não Windows-1252
+                        // Converte de UTF-8 para string .NET (Unicode)
+                        noProcedimento = Encoding.UTF8.GetString(validBytes);
+                        
+                        // Se a conversão resultou em caracteres corrompidos, tenta o helper como fallback
                         if (!string.IsNullOrEmpty(noProcedimento) && 
                             (noProcedimento.Contains('\uFFFD') || noProcedimento.Contains('?')))
                         {

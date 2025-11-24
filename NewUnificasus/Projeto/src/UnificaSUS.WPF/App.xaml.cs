@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text;
 using System.Windows;
 using UnificaSUS.Core.Interfaces;
 using UnificaSUS.Infrastructure.Data;
@@ -16,6 +17,29 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Registra o provider de code pages para suportar Windows-1252 e outros encodings
+        // Usa reflection para evitar dependência direta do namespace
+        try
+        {
+            var codePagesType = Type.GetType("System.Text.Encoding.CodePages.CodePagesEncodingProvider, System.Text.Encoding.CodePages");
+            if (codePagesType != null)
+            {
+                var instanceProperty = codePagesType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (instanceProperty != null)
+                {
+                    var instance = instanceProperty.GetValue(null);
+                    if (instance != null && instance is EncodingProvider provider)
+                    {
+                        Encoding.RegisterProvider(provider);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Já registrado ou não disponível - continua normalmente
+        }
 
         try
         {

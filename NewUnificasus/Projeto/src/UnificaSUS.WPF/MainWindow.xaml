@@ -22,13 +22,39 @@
         <!-- Barra de Título e Navegação -->
         <Grid Grid.Row="0" Background="White" Margin="0,0,0,5">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="50"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             
-            <!-- Cabeçalho Centralizado com Nome do Submenu -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5">
+            <!-- Barra de Carregamento (Sempre visível, totalmente à esquerda) -->
+            <StackPanel Grid.Column="0" x:Name="LoadingBarGrid" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,5,5,5" HorizontalAlignment="Left">
+                <ProgressBar x:Name="LoadingProgressBar" 
+                            Height="18" 
+                            Width="120" 
+                            IsIndeterminate="False"
+                            Value="0"
+                            Margin="0,0,6,0"
+                            Visibility="Collapsed"/>
+                <TextBlock x:Name="LoadingStatusTextBlock" 
+                          Text="" 
+                          VerticalAlignment="Center"
+                          FontSize="10"
+                          Foreground="DarkBlue"
+                          MaxWidth="150"
+                          TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            
+            <!-- Cabeçalho Centralizado com Nome do Submenu (Fixo, não se move) -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5">
+                <Button Content="ℹ️" Width="30" Height="25" Click="NotasVersao_Click" Margin="2" ToolTip="Notas da Versão (Clique direito para menu)" FontSize="14">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="🧪 Teste" Click="TesteAcentuacao_Click" ToolTip="Testa inserção e leitura de acentuação"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
                 <Button Content="&lt;" Width="30" Height="25" Click="NavPrevious_Click" Margin="2" ToolTip="Procedimento anterior"/>
                 <Button Content="&lt;&lt;" Width="30" Height="25" Click="NavFirst_Click" Margin="2" ToolTip="Primeiro procedimento"/>
                 <TextBlock x:Name="SubmenuHeaderTextBlock" 
@@ -49,14 +75,19 @@
         <!-- Área Principal: TreeView à esquerda e detalhes à direita -->
         <Grid Grid.Row="1" Margin="5" VerticalAlignment="Stretch">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="300"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="300" MinWidth="150"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="250" MinWidth="150"/>
             </Grid.ColumnDefinitions>
 
             <!-- TreeView de Categorias (Esquerda) -->
-            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,5,0" VerticalAlignment="Stretch" ToolTip="Árvore de categorias de procedimentos">
-                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto">
+            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,0,0" VerticalAlignment="Stretch" ToolTip="Árvore de categorias de procedimentos">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Auto"
+                              CanContentScroll="False"
+                              PreviewMouseWheel="TreeViewScrollViewer_PreviewMouseWheel">
                     <TreeView x:Name="CategoriasTreeView" 
                               BorderThickness="0"
                               SelectedItemChanged="CategoriasTreeView_SelectedItemChanged"
@@ -110,8 +141,18 @@
                 </ScrollViewer>
             </Border>
 
+            <!-- GridSplitter entre TreeView e Área Central -->
+            <GridSplitter Grid.Column="1" 
+                         HorizontalAlignment="Stretch" 
+                         VerticalAlignment="Stretch"
+                         ShowsPreview="False"
+                         ResizeBehavior="PreviousAndNext"
+                         Width="5"
+                         Background="LightGray"
+                         Cursor="SizeWE"/>
+
             <!-- Área Central: Detalhes do Procedimento e Grid -->
-            <Grid Grid.Column="1" Margin="0,0,5,0">
+            <Grid Grid.Column="2" Margin="0,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -283,8 +324,18 @@
                 </Border>
             </Grid>
 
+            <!-- GridSplitter entre Área Central e Painel Direito -->
+            <GridSplitter Grid.Column="3" 
+                         HorizontalAlignment="Stretch" 
+                         VerticalAlignment="Stretch"
+                         ShowsPreview="False"
+                         ResizeBehavior="PreviousAndNext"
+                         Width="5"
+                         Background="LightGray"
+                         Cursor="SizeWE"/>
+
             <!-- Painel Direito: Filtros e Ações -->
-            <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="5">
+            <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -295,7 +346,6 @@
                         <!-- Menu Dropdown de Filtros -->
                         <ComboBox x:Name="FiltrosComboBox" 
                                   Margin="0,0,0,5"
-                                  SelectedIndex="0"
                                   SelectionChanged="FiltrosComboBox_SelectionChanged"
                                   ToolTip="Selecione o tipo de filtro para buscar itens relacionados ao procedimento">
                             <ComboBoxItem Content="Cid10" ToolTip="CID-10 relacionado ao procedimento"/>
@@ -312,7 +362,8 @@
                         </ComboBox>
 
                         <!-- Botão de Confirmação para Buscar Relacionados -->
-                        <Button Content="Buscar Relacionados" 
+                        <Button x:Name="BtnBuscarRelacionados"
+                                Content="Buscar Relacionados" 
                                 Background="LightGreen" 
                                 Padding="10,5" 
                                 Margin="0,0,0,10"
@@ -320,27 +371,12 @@
                                 ToolTip="Busca itens relacionados ao procedimento selecionado conforme o filtro escolhido"/>
 
                         <!-- Botões de Ação -->
-                        <Button Content="Notas da Versão" 
-                                Background="LightBlue" 
-                                Padding="10,5" 
-                                Margin="0,0,0,5"
-                                Click="NotasVersao_Click"
-                                ToolTip="Exibe as notas e informações da versão atual"/>
-
                         <Button Content="Cadastrar Serviço/Classificação" 
                                 IsEnabled="False"
                                 Padding="10,5" 
                                 Margin="0,0,0,5"
                                 Click="CadastrarServico_Click"
                                 ToolTip="Cadastrar novo serviço ou classificação (indisponível)"/>
-
-                        <Button Content="ATIVAR COMPETÊNCIA" 
-                                Background="LightBlue" 
-                                FontWeight="Bold"
-                                Padding="10,5" 
-                                Margin="0,0,0,10"
-                                Click="AtivarCompetencia_Click"
-                                ToolTip="Ativa a competência selecionada para uso no sistema"/>
 
                         <!-- Seleção de Competência -->
                         <Label Content="Competência:" Margin="0,0,0,5" ToolTip="Selecione a competência desejada"/>
@@ -370,15 +406,18 @@
 
                     <!-- Área para exibição dinâmica dos relacionados -->
                     <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,5,0,0">
-                        <Grid x:Name="AreaRelacionados" Background="WhiteSmoke">
-                            <TextBlock Text="Selecione um procedimento para ver os itens relacionados." 
-                                       TextWrapping="Wrap" 
-                                       HorizontalAlignment="Center" 
-                                       VerticalAlignment="Center"
-                                       Foreground="Gray"
-                                       FontStyle="Italic"
-                                       Margin="10"/>
-                        </Grid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <Grid x:Name="AreaRelacionados" Background="WhiteSmoke" MinHeight="100">
+                                <TextBlock Text="Selecione um procedimento para ver os itens relacionados." 
+                                           TextWrapping="Wrap" 
+                                           HorizontalAlignment="Stretch" 
+                                           VerticalAlignment="Center"
+                                           Foreground="Gray"
+                                           FontStyle="Italic"
+                                           Margin="10"
+                                           TextAlignment="Center"/>
+                            </Grid>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </Border>

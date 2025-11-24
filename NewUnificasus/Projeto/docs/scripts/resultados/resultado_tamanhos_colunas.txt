@@ -1,0 +1,16 @@
+
+TABELA     COLUNA                          TAMANHO_BANCO TAMANHO_ESPERADO STATUS          
+========== =============================== ============= ================ =============== 
+TB_RUBRICA CO_RUBRICA                                  6                6 OK              
+TB_RUBRICA DT_COMPETENCIA                              6                6 OK              
+TB_RUBRICA NO_RUBRICA                                100              100 OK              
+
+
+TABELA COLUNA                          TAMANHO_BANCO TAMANHO_ESPERADO STATUS          
+====== =============================== ============= ================ =============== 
+TB_CID CO_CID                                      4                4 OK              
+TB_CID NO_CID                                    100              100 OK              
+TB_CID TP_AGRAVO                                   1                1 OK              
+TB_CID TP_SEXO                                     1                1 OK              
+TB_CID TP_ESTADIO                                  1                1 OK              
+

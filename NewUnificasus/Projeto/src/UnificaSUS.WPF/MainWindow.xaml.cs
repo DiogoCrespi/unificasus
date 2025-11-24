@@ -1,6 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -9,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Navigation;
 using UnificaSUS.Core.Entities;
 using UnificaSUS.Core.Interfaces;
+using UnificaSUS.Infrastructure.Helpers;
 using ApplicationService = UnificaSUS.Application.Services;
 
 namespace UnificaSUS.WPF;
@@ -20,13 +27,19 @@ public partial class MainWindow : Window
     private readonly ApplicationService.GrupoService _grupoService;
     private readonly ApplicationService.ProcedimentoComumService _procedimentoComumService;
     private readonly ApplicationService.RelatorioService _relatorioService;
-    private readonly IConfigurationReader _configurationReader;
+    private readonly IConfigurationReader _configurationReader = null!; // Inicializado via DI no construtor
     
     private string _competenciaAtiva = string.Empty;
     private ObservableCollection<Grupo> _grupos = new();
     private ObservableCollection<Procedimento> _procedimentos = new();
     private List<ProcedimentoComum> _procedimentosComunsCache = new();
     private string _databasePath = "local";
+    
+    // Controle de carregamento e fila de requisições
+    private bool _isLoading = false;
+    private CancellationTokenSource? _currentCancellationTokenSource;
+    private readonly Dictionary<string, IEnumerable<object>> _cacheRelacionados = new();
+    private System.Windows.Threading.DispatcherTimer? _debounceTimer;
 
     // Converter AAAAMM para MM/YYYY
     private static string FormatCompetencia(string competencia)
@@ -73,6 +86,20 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         
+        // Verificar se os serviços foram injetados corretamente
+        if (procedimentoService == null)
+            throw new ArgumentNullException(nameof(procedimentoService));
+        if (competenciaService == null)
+            throw new ArgumentNullException(nameof(competenciaService));
+        if (grupoService == null)
+            throw new ArgumentNullException(nameof(grupoService));
+        if (procedimentoComumService == null)
+            throw new ArgumentNullException(nameof(procedimentoComumService));
+        if (relatorioService == null)
+            throw new ArgumentNullException(nameof(relatorioService));
+        if (configurationReader == null)
+            throw new ArgumentNullException(nameof(configurationReader));
+        
         _procedimentoService = procedimentoService;
         _competenciaService = competenciaService;
         _grupoService = grupoService;
@@ -83,19 +110,28 @@ public partial class MainWindow : Window
         // Obter caminho do banco para título
         try
         {
-            var dbPath = _configurationReader.GetDatabasePath();
-            if (dbPath.Contains(':'))
+            if (_configurationReader != null)
             {
-                var parts = dbPath.Split(':');
-                _databasePath = parts.Length > 1 ? parts[0] : "local";
+                var dbPath = _configurationReader.GetDatabasePath();
+                if (!string.IsNullOrEmpty(dbPath) && dbPath.Contains(':'))
+                {
+                    var parts = dbPath.Split(':');
+                    _databasePath = parts.Length > 1 ? parts[0] : "local";
+                }
+                else
+                {
+                    _databasePath = "local";
+                }
             }
             else
             {
                 _databasePath = "local";
             }
         }
-        catch
+        catch (Exception ex)
         {
+            // Log do erro mas não interrompe a inicialização
+            System.Diagnostics.Debug.WriteLine($"Erro ao ler configuração: {ex.Message}");
             _databasePath = "local";
         }
         
@@ -115,6 +151,23 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Verificar se os serviços estão inicializados
+            if (_competenciaService == null)
+            {
+                throw new InvalidOperationException("Serviço de competência não foi inicializado corretamente.");
+            }
+            
+            // Verificar se o arquivo de configuração existe
+            if (_configurationReader != null && !_configurationReader.ConfigFileExists())
+            {
+                MessageBox.Show(
+                    $"Arquivo de configuração não encontrado:\n\nC:\\Program Files\\claupers\\unificasus\\unificasus.ini\n\nPor favor, verifique se o arquivo existe.",
+                    "Erro de Configuração",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+            
             // Carregar competência ativa
             await CarregarCompetenciaAtivaAsync();
             
@@ -124,13 +177,24 @@ public partial class MainWindow : Window
             // Carregar apenas grupos/categorias (não carrega procedimentos ainda)
             if (!string.IsNullOrEmpty(_competenciaAtiva))
             {
+                if (_grupoService == null)
+                {
+                    throw new InvalidOperationException("Serviço de grupos não foi inicializado corretamente.");
+                }
+                
                 await CarregarGruposAsync();
                 
                 // Carregar procedimentos comuns automaticamente
-                await CarregarProcedimentosComunsAsync();
+                if (_procedimentoComumService != null)
+                {
+                    await CarregarProcedimentosComunsAsync();
+                }
                 
                 // Não carrega procedimentos automaticamente - só quando o usuário selecionar
-                StatusTextBlock.Text = "Selecione uma categoria para ver os procedimentos";
+                if (StatusTextBlock != null)
+                {
+                    StatusTextBlock.Text = "Selecione uma categoria para ver os procedimentos";
+                }
             }
             else
             {
@@ -141,6 +205,20 @@ public partial class MainWindow : Window
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
+            
+            // Pré-selecionar "Descrição" no FiltrosComboBox por padrão
+            if (FiltrosComboBox != null)
+            {
+                // Encontrar o item "Descrição" e selecioná-lo
+                foreach (ComboBoxItem item in FiltrosComboBox.Items)
+                {
+                    if (item.Content?.ToString() == "Descrição")
+                    {
+                        FiltrosComboBox.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -149,6 +227,7 @@ public partial class MainWindow : Window
             {
                 errorMessage += $"\n\nErro interno: {ex.InnerException.Message}";
             }
+            errorMessage += $"\n\nStack Trace:\n{ex.StackTrace}";
             
             MessageBox.Show(errorMessage, 
                           "Erro", 
@@ -186,6 +265,57 @@ public partial class MainWindow : Window
             // Atualizar status bar
             StatusTextBlock.Text = "Erro ao conectar com o banco de dados";
         }
+    }
+    
+    /// <summary>
+    /// Define o status de carregamento e atualiza a UI
+    /// </summary>
+    private void SetLoadingStatus(string message, bool isLoading)
+    {
+        _isLoading = isLoading;
+        
+        Dispatcher.Invoke(() =>
+        {
+            // Barra de progresso sempre visível, mas mostra conteúdo apenas quando carregando
+            if (LoadingBarGrid != null)
+            {
+                // Sempre visível, não colapsa
+                LoadingBarGrid.Visibility = Visibility.Visible;
+            }
+            
+            if (LoadingProgressBar != null)
+            {
+                LoadingProgressBar.IsIndeterminate = isLoading;
+                LoadingProgressBar.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
+            }
+            
+            if (LoadingStatusTextBlock != null)
+            {
+                LoadingStatusTextBlock.Text = isLoading ? message : string.Empty;
+            }
+            
+            // Desabilitar/habilitar botão "Buscar Relacionados"
+            if (BtnBuscarRelacionados != null)
+            {
+                BtnBuscarRelacionados.IsEnabled = !isLoading;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Gera chave de cache para resultados relacionados
+    /// </summary>
+    private string GerarChaveCache(string coProcedimento, string competencia, string tipoFiltro)
+    {
+        return $"{coProcedimento}|{competencia}|{tipoFiltro}";
+    }
+    
+    /// <summary>
+    /// Invalida o cache de resultados relacionados
+    /// </summary>
+    private void InvalidarCacheRelacionados()
+    {
+        _cacheRelacionados.Clear();
     }
 
     private async Task CarregarCompetenciasDisponiveisAsync()
@@ -267,8 +397,9 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Buscar todos os procedimentos comuns e atualizar cache
-            var procedimentosComuns = await _procedimentoComumService.BuscarTodosAsync();
+            // Buscar todos os procedimentos comuns e atualizar cache usando a fila para evitar chamadas paralelas
+            var procedimentosComuns = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                async () => await _procedimentoComumService.BuscarTodosAsync());
             _procedimentosComunsCache = procedimentosComuns.ToList();
             
             if (!procedimentosComuns.Any())
@@ -288,10 +419,11 @@ public partial class MainWindow : Window
 
             if (codigos.Any())
             {
-                // Buscar todos os procedimentos de uma vez (mais eficiente)
-                var procedimentosEncontrados = await _procedimentoService.BuscarPorCodigosAsync(
-                    codigos, 
-                    _competenciaAtiva);
+                // Buscar todos os procedimentos de uma vez usando a fila para evitar chamadas paralelas
+                var procedimentosEncontrados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _procedimentoService.BuscarPorCodigosAsync(
+                        codigos, 
+                        _competenciaAtiva));
 
                 foreach (var procedimento in procedimentosEncontrados)
                 {
@@ -319,8 +451,81 @@ public partial class MainWindow : Window
 
     private async void CategoriasTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
+        var selectedItem = CategoriasTreeView.SelectedItem;
+        
+        if (selectedItem == null)
+        {
+            return;
+        }
+
+        // Expandir apenas o caminho até o item selecionado (sem recolher outros)
+        await Dispatcher.InvokeAsync(() =>
+        {
+            ExpandirCaminhoAteItem(selectedItem);
+        });
+
+        // Aguardar um pouco para o TreeView processar a expansão
+        await Task.Delay(100);
+
         // Ao selecionar um item no TreeView, carregar apenas os procedimentos relacionados
         await CarregarProcedimentosSelecionadosAsync();
+    }
+
+    private void ExpandirCaminhoAteItem(object item)
+    {
+        if (item == null)
+            return;
+
+        // Determinar o tipo de item e expandir o caminho apropriado
+        if (item is FormaOrganizacao formaOrganizacao)
+        {
+            // Expandir grupo, depois subgrupo, depois forma de organização
+            var grupo = _grupos.FirstOrDefault(g => g.CoGrupo == formaOrganizacao.CoGrupo);
+            if (grupo != null)
+            {
+                var grupoTreeViewItem = EncontrarTreeViewItemPorItem(CategoriasTreeView, grupo);
+                if (grupoTreeViewItem != null)
+                {
+                    grupoTreeViewItem.IsExpanded = true;
+                    grupoTreeViewItem.UpdateLayout();
+
+                    var subGrupo = grupo.SubGrupos.FirstOrDefault(sg => sg.CoSubGrupo == formaOrganizacao.CoSubGrupo);
+                    if (subGrupo != null)
+                    {
+                        var subGrupoTreeViewItem = EncontrarTreeViewItemPorItem(CategoriasTreeView, subGrupo);
+                        if (subGrupoTreeViewItem != null)
+                        {
+                            subGrupoTreeViewItem.IsExpanded = true;
+                            subGrupoTreeViewItem.UpdateLayout();
+                        }
+                    }
+                }
+            }
+        }
+        else if (item is SubGrupo subGrupo)
+        {
+            // Expandir apenas o grupo e depois o subgrupo
+            var grupo = _grupos.FirstOrDefault(g => g.CoGrupo == subGrupo.CoGrupo);
+            if (grupo != null)
+            {
+                var grupoTreeViewItem = EncontrarTreeViewItemPorItem(CategoriasTreeView, grupo);
+                if (grupoTreeViewItem != null)
+                {
+                    grupoTreeViewItem.IsExpanded = true;
+                    grupoTreeViewItem.UpdateLayout();
+                }
+            }
+        }
+        // Se for um Grupo, não precisa expandir nada, pois já está no nível raiz
+
+        // Encontrar e trazer o item selecionado para a visualização
+        var treeViewItem = EncontrarTreeViewItemPorItem(CategoriasTreeView, item);
+        if (treeViewItem != null)
+        {
+            treeViewItem.IsExpanded = true;
+            treeViewItem.UpdateLayout();
+            treeViewItem.BringIntoView();
+        }
     }
 
     private async Task CarregarProcedimentosSelecionadosAsync()
@@ -358,59 +563,54 @@ public partial class MainWindow : Window
         string? coFormaOrganizacao = null;
         string itemNome = "todos";
 
+        // Identifica o tipo de item selecionado
+        if (dataContext is FormaOrganizacao formaOrganizacao)
+        {
+            // Selecionou uma forma de organização - carrega apenas os procedimentos dessa forma
+            coGrupo = formaOrganizacao.CoGrupo;
+            coSubGrupo = formaOrganizacao.CoSubGrupo;
+            coFormaOrganizacao = formaOrganizacao.CoFormaOrganizacao;
+            itemNome = formaOrganizacao.NoFormaOrganizacao ?? "Forma de Organização";
+        }
+        else if (dataContext is SubGrupo subGrupo)
+        {
+            // Selecionou um sub-grupo - carrega procedimentos desse sub-grupo (todas as formas)
+            coGrupo = subGrupo.CoGrupo;
+            coSubGrupo = subGrupo.CoSubGrupo;
+            itemNome = subGrupo.NoSubGrupo ?? "Sub-Grupo";
+        }
+        else if (dataContext is Grupo grupo)
+        {
+            // Selecionou um grupo - carrega procedimentos desse grupo (todos os sub-grupos)
+            coGrupo = grupo.CoGrupo;
+            itemNome = grupo.NoGrupo ?? "Grupo";
+        }
+        else
+        {
+            // Tipo não reconhecido
+            StatusTextBlock.Text = $"Tipo de item não reconhecido: {dataContext.GetType().Name}";
+            return;
+        }
+
+        // Se nenhum grupo foi identificado, não carrega
+        if (string.IsNullOrEmpty(coGrupo))
+        {
+            StatusTextBlock.Text = "Grupo não identificado";
+            return;
+        }
+
         try
         {
-            // Debug: verificar o tipo do item selecionado
-            var itemType = dataContext.GetType().Name;
-
-            // Identifica o tipo de item selecionado
-            if (dataContext is FormaOrganizacao formaOrganizacao)
-            {
-                // Selecionou uma forma de organização - carrega apenas os procedimentos dessa forma
-                coGrupo = formaOrganizacao.CoGrupo;
-                coSubGrupo = formaOrganizacao.CoSubGrupo;
-                coFormaOrganizacao = formaOrganizacao.CoFormaOrganizacao;
-                itemNome = formaOrganizacao.NoFormaOrganizacao ?? "Forma de Organização";
-            }
-            else if (dataContext is SubGrupo subGrupo)
-            {
-                // Selecionou um sub-grupo - carrega procedimentos desse sub-grupo (todas as formas)
-                coGrupo = subGrupo.CoGrupo;
-                coSubGrupo = subGrupo.CoSubGrupo;
-                itemNome = subGrupo.NoSubGrupo ?? "Sub-Grupo";
-            }
-            else if (dataContext is Grupo grupo)
-            {
-                // Selecionou um grupo - carrega procedimentos desse grupo (todos os sub-grupos)
-                coGrupo = grupo.CoGrupo;
-                itemNome = grupo.NoGrupo ?? "Grupo";
-            }
-            else
-            {
-                // Tipo não reconhecido - mostra erro com mais detalhes
-                StatusTextBlock.Text = $"Tipo de item não reconhecido: {itemType}";
-                MessageBox.Show($"Tipo de item não reconhecido: {itemType}\n\nTipo completo: {dataContext.GetType().FullName}", 
-                              "Erro", 
-                              MessageBoxButton.OK, 
-                              MessageBoxImage.Warning);
-                return;
-            }
-
-            // Se nenhum grupo foi identificado, não carrega
-            if (string.IsNullOrEmpty(coGrupo))
-            {
-                StatusTextBlock.Text = "Grupo não identificado";
-                return;
-            }
-
-            // Busca apenas os procedimentos da estrutura selecionada
+            // Busca apenas os procedimentos da estrutura selecionada usando a fila para evitar chamadas paralelas
             StatusTextBlock.Text = $"Carregando procedimentos de: {itemNome}...";
             
-            var procedimentos = await _procedimentoService.BuscarPorEstruturaAsync(
-                coGrupo, 
-                coSubGrupo, 
-                coFormaOrganizacao, 
-                _competenciaAtiva);
+            // Usar DatabaseRequestQueue para garantir que não há chamadas paralelas ao banco
+            var procedimentos = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                async () => await _procedimentoService.BuscarPorEstruturaAsync(
+                    coGrupo, 
+                    coSubGrupo, 
+                    coFormaOrganizacao, 
+                    _competenciaAtiva));
             
             _procedimentos.Clear();
             
@@ -427,11 +627,27 @@ public partial class MainWindow : Window
         catch (InvalidOperationException ex)
         {
             // Erro específico do banco de dados
-            MessageBox.Show(ex.Message, 
+            var errorMsg = ex.Message;
+            if (ex.InnerException != null && ex.InnerException.Message.Contains("invalid transaction handle", StringComparison.OrdinalIgnoreCase))
+            {
+                errorMsg = "Erro de transação no banco de dados. Por favor, tente novamente.";
+            }
+            
+            MessageBox.Show(errorMsg, 
                           "Erro de Banco de Dados", 
                           MessageBoxButton.OK, 
                           MessageBoxImage.Error);
             StatusTextBlock.Text = "Erro ao carregar procedimentos";
+        }
+        catch (Exception ex) when (ex.Message.Contains("invalid transaction handle", StringComparison.OrdinalIgnoreCase) ||
+                                   (ex.InnerException?.Message?.Contains("invalid transaction handle", StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            // Erro específico de transação do Firebird
+            MessageBox.Show("Erro de transação no banco de dados. Por favor, aguarde um momento e tente novamente.", 
+                          "Erro de Banco de Dados", 
+                          MessageBoxButton.OK, 
+                          MessageBoxImage.Error);
+            StatusTextBlock.Text = "Erro ao carregar procedimentos - tente novamente";
         }
         catch (Exception ex)
         {
@@ -455,7 +671,32 @@ public partial class MainWindow : Window
         {
             CarregarDetalhesProcedimento(procedimento);
             AtualizarNomeSubmenu(procedimento);
-            await AtualizarAreaRelacionados();
+            
+            // Não expandir automaticamente - apenas quando usuário clicar no TreeView
+            // Isso evita múltiplas chamadas ao banco de dados que não aceita buscas paralelas
+            
+            // Debounce: cancelar requisição anterior e aguardar 400ms
+            _currentCancellationTokenSource?.Cancel();
+            _currentCancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _currentCancellationTokenSource.Token;
+            
+            // Cancelar timer anterior se existir
+            _debounceTimer?.Stop();
+            _debounceTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(400)
+            };
+            
+            _debounceTimer.Tick += async (s, args) =>
+            {
+                _debounceTimer.Stop();
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    await AtualizarAreaRelacionadosAsync(cancellationToken);
+                }
+            };
+            
+            _debounceTimer.Start();
         }
         else
         {
@@ -463,7 +704,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void CompetenciaComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void CompetenciaComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CompetenciaComboBox.SelectedItem is string competencia)
         {
@@ -506,8 +747,7 @@ public partial class MainWindow : Window
             // Conclusão: Não alterar CompetenciaComboBox_SelectionChanged para atualizar a view, 
             // pois a view depende da competência ATIVA, que só muda no botão Confirmar/Ativar.
             
-            // Mas vou adicionar o call no ProcedimentosDataGrid_SelectionChanged.
-            await AtualizarAreaRelacionados();
+            // Não atualizar área relacionada aqui, pois a competência ainda não foi ativada
         }
     }
 
@@ -550,6 +790,76 @@ public partial class MainWindow : Window
             SubmenuHeaderTextBlock.Text = "Erro ao carregar submenu";
             System.Diagnostics.Debug.WriteLine($"Erro ao atualizar nome do submenu: {ex.Message}");
         }
+    }
+
+
+    private TreeViewItem? EncontrarTreeViewItemPorItem(ItemsControl itemsControl, object item)
+    {
+        if (itemsControl == null || item == null)
+            return null;
+
+        // Verificar se o item está diretamente nos itens do controle
+        foreach (var container in itemsControl.Items)
+        {
+            if (container == item)
+            {
+                var foundTreeViewItem = itemsControl.ItemContainerGenerator.ContainerFromItem(container) as TreeViewItem;
+                return foundTreeViewItem;
+            }
+
+            var treeViewItem = itemsControl.ItemContainerGenerator.ContainerFromItem(container) as TreeViewItem;
+            if (treeViewItem != null)
+            {
+                var dataContext = treeViewItem.DataContext ?? treeViewItem.Header;
+                if (dataContext == item || container == item)
+                {
+                    return treeViewItem;
+                }
+
+                // Buscar recursivamente nos filhos
+                var found = EncontrarTreeViewItemRecursivo(treeViewItem, item);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private TreeViewItem? EncontrarTreeViewItemRecursivo(TreeViewItem parentItem, object item)
+    {
+        if (parentItem == null || item == null)
+            return null;
+
+        foreach (var child in parentItem.Items)
+        {
+            if (child == item)
+            {
+                var foundTreeViewItem = parentItem.ItemContainerGenerator.ContainerFromItem(child) as TreeViewItem;
+                return foundTreeViewItem;
+            }
+
+            var treeViewItem = parentItem.ItemContainerGenerator.ContainerFromItem(child) as TreeViewItem;
+            if (treeViewItem != null)
+            {
+                var dataContext = treeViewItem.DataContext ?? treeViewItem.Header;
+                if (dataContext == item || child == item)
+                {
+                    return treeViewItem;
+                }
+
+                // Buscar recursivamente nos filhos
+                var found = EncontrarTreeViewItemRecursivo(treeViewItem, item);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void ProcedimentosDataGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
@@ -811,6 +1121,9 @@ public partial class MainWindow : Window
                     _competenciaAtiva = competencia;
                     AtualizarTitulo();
                     
+                    // Invalidar cache quando competência muda
+                    InvalidarCacheRelacionados();
+                    
                     MessageBox.Show($"Competência {FormatCompetencia(competencia)} ativada com sucesso!", 
                                   "Sucesso", 
                                   MessageBoxButton.OK, 
@@ -818,13 +1131,25 @@ public partial class MainWindow : Window
                     
                     // Recarregar apenas grupos com a nova competência (não carrega procedimentos ainda)
                     await CarregarGruposAsync();
-                    _procedimentos.Clear();
-                    ProcedimentosDataGrid.ItemsSource = _procedimentos;
-                    StatusTextBlock.Text = "Competência ativada. Selecione uma categoria para ver os procedimentos";
+                    
+                    // Mostrar barra de carregamento enquanto carrega procedimentos comuns
+                    SetLoadingStatus("Carregando procedimentos comuns...", true);
+                    
+                    try
+                    {
+                        // Ir automaticamente para a tela inicial (procedimentos comuns)
+                        await CarregarProcedimentosComunsAsync();
+                    }
+                    finally
+                    {
+                        // Esconder barra de carregamento após concluir (mesmo em caso de erro)
+                        SetLoadingStatus("Pronto", false);
+                    }
                 }
             }
             catch (Exception ex)
             {
+                SetLoadingStatus("Erro", false);
                 MessageBox.Show($"Erro ao ativar competência:\n{ex.Message}", 
                               "Erro", 
                               MessageBoxButton.OK, 
@@ -1016,9 +1341,42 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Importar_Click(object sender, RoutedEventArgs e)
+    private async void Importar_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show("Funcionalidade em desenvolvimento", "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+        // Cria FirebirdContext para a importação
+        var importContext = new Infrastructure.Data.FirebirdContext(_configurationReader);
+        
+        var importWindow = new ImportWindow(importContext, _configurationReader)
+        {
+            Owner = this
+        };
+        
+        importWindow.ShowDialog();
+        
+        // Se a importação foi concluída com sucesso, atualiza a listagem de competências
+        if (importWindow.ImportacaoConcluidaComSucesso)
+        {
+            try
+            {
+                await CarregarCompetenciasDisponiveisAsync();
+                MessageBox.Show(
+                    "Importação concluída com sucesso!\n\nA listagem de competências foi atualizada.",
+                    "Sucesso",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Importação concluída, mas houve erro ao atualizar a listagem:\n\n{ex.Message}",
+                    "Aviso",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+        
+        // Dispose do contexto após fechar a janela
+        importContext.Dispose();
     }
 
     private void Relatorios_Click(object sender, RoutedEventArgs e)
@@ -1052,11 +1410,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void TesteAcentuacao_Click(object sender, RoutedEventArgs e)
+    {
+        await TestarAcentuacaoAsync();
+    }
+
     private async void ProcComuns_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             // Buscar todos os procedimentos comuns
+            // Os dados já vêm com encoding correto do repositório (FirebirdReaderHelper.GetStringSafe)
             var procedimentosComuns = await _procedimentoComumService.BuscarTodosAsync();
             
             // Criar diálogo para gerenciar procedimentos comuns
@@ -1254,7 +1618,7 @@ public partial class MainWindow : Window
                             // Atualizar DataGrid principal para remover a estrela
                             ProcedimentosDataGrid.Items.Refresh();
                             
-                            // Recarregar lista
+                            // Recarregar lista (dados já vêm com encoding correto do repositório)
                             var atualizados = await _procedimentoComumService.BuscarTodosAsync();
                             dataGrid.ItemsSource = atualizados;
                             labelInfo.Content = $"Total de procedimentos comuns: {atualizados.Count()}";
@@ -1287,7 +1651,7 @@ public partial class MainWindow : Window
         }
     }
     
-    private async void ProcedimentosDataGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    private void ProcedimentosDataGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (sender is not DataGrid dataGrid)
         {
@@ -1534,7 +1898,7 @@ public partial class MainWindow : Window
         }
     }
     
-    private async Task EditarObservacaoProcedimentoComumAsync(ProcedimentoComum procComum)
+    private Task EditarObservacaoProcedimentoComumAsync(ProcedimentoComum procComum)
     {
         try
         {
@@ -1647,6 +2011,8 @@ public partial class MainWindow : Window
             MessageBox.Show($"Erro ao editar observação:\n{ex.Message}", 
                           "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        
+        return Task.CompletedTask;
     }
 
     private async Task AdicionarProcedimentoComumAsync(Window parentDialog, DataGrid dataGrid, Label labelInfo)
@@ -1766,7 +2132,7 @@ public partial class MainWindow : Window
                 // Atualizar DataGrid principal para mostrar a estrela
                 ProcedimentosDataGrid.Items.Refresh();
                 
-                // Recarregar lista
+                // Recarregar lista (dados já vêm com encoding correto do repositório)
                 var atualizados = await _procedimentoComumService.BuscarTodosAsync();
                 dataGrid.ItemsSource = atualizados;
                 labelInfo.Content = $"Total de procedimentos comuns: {atualizados.Count()}";
@@ -1881,9 +2247,10 @@ public partial class MainWindow : Window
                 // Atualizar DataGrid principal para atualizar tooltip
                 ProcedimentosDataGrid.Items.Refresh();
                 
-                // Recarregar lista
+                // Recarregar lista (dados já vêm com encoding correto do repositório)
                 var atualizados = await _procedimentoComumService.BuscarTodosAsync();
                 dataGrid.ItemsSource = atualizados;
+                labelInfo.Content = $"Total de procedimentos comuns: {atualizados.Count()}";
                 
                 dialog.Close();
                 MessageBox.Show("Procedimento comum atualizado com sucesso!", 
@@ -1911,6 +2278,12 @@ public partial class MainWindow : Window
 
     private async void BuscarRelacionados_Click(object sender, RoutedEventArgs e)
     {
+        // Verifica se já está carregando
+        if (_isLoading)
+        {
+            return;
+        }
+
         // Verifica se há um procedimento selecionado
         if (ProcedimentosDataGrid.SelectedItem is not Procedimento procedimentoSelecionado)
         {
@@ -1942,68 +2315,92 @@ public partial class MainWindow : Window
         }
 
         var filtroSelecionado = itemSelecionado.Content?.ToString() ?? string.Empty;
+        var cancellationToken = new CancellationTokenSource().Token;
 
         try
         {
+            SetLoadingStatus($"Buscando {filtroSelecionado} relacionados...", true);
             StatusTextBlock.Text = $"Buscando {filtroSelecionado} relacionados...";
             
             IEnumerable<RelacionadoItem> relacionados;
 
-            // Busca os relacionados baseado no filtro selecionado
+            // Busca os relacionados baseado no filtro selecionado usando a fila de requisições
             switch (filtroSelecionado)
             {
                 case "Cid10":
-                    relacionados = await _procedimentoService.BuscarCID10RelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarCID10RelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Compatíveis":
-                    relacionados = await _procedimentoService.BuscarCompativeisRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarCompativeisRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Habilitação":
-                    relacionados = await _procedimentoService.BuscarHabilitacoesRelacionadasAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarHabilitacoesRelacionadasAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "CBO":
-                    relacionados = await _procedimentoService.BuscarCBOsRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarCBOsRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Serviços":
-                    var servicos = await _procedimentoService.BuscarServicosRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    var servicos = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarServicosRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     ExibirServicosRelacionados(servicos, filtroSelecionado, procedimentoSelecionado.CoProcedimento);
+                    SetLoadingStatus("Pronto", false);
                     return;
                 case "Tipo de Leito":
-                    System.Diagnostics.Debug.WriteLine($"BuscarTiposLeito: Procedimento={procedimentoSelecionado.CoProcedimento}, Competencia={_competenciaAtiva}");
-                    relacionados = await _procedimentoService.BuscarTiposLeitoRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
-                    System.Diagnostics.Debug.WriteLine($"BuscarTiposLeito: Retornados {relacionados.Count()} registros");
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarTiposLeitoRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Modalidade":
-                    relacionados = await _procedimentoService.BuscarModalidadesRelacionadasAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarModalidadesRelacionadasAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Descrição":
-                    relacionados = await _procedimentoService.BuscarDescricaoRelacionadaAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarDescricaoRelacionadaAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Detalhes":
-                    relacionados = await _procedimentoService.BuscarDetalhesRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarDetalhesRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Incremento":
-                    relacionados = await _procedimentoService.BuscarIncrementosRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarIncrementosRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 case "Instrumento de Registro":
-                    relacionados = await _procedimentoService.BuscarInstrumentosRegistroRelacionadosAsync(
-                        procedimentoSelecionado.CoProcedimento, _competenciaAtiva);
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarInstrumentosRegistroRelacionadosAsync(
+                            procedimentoSelecionado.CoProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
                     break;
                 default:
                     MessageBox.Show($"Filtro '{filtroSelecionado}' não reconhecido.", 
                                   "Erro", 
                                   MessageBoxButton.OK, 
                                   MessageBoxImage.Error);
+                    SetLoadingStatus("Pronto", false);
                     StatusTextBlock.Text = "Pronto";
                     return;
             }
@@ -2011,15 +2408,31 @@ public partial class MainWindow : Window
             // Exibe os resultados em uma janela
             ExibirRelacionados(relacionados, filtroSelecionado, procedimentoSelecionado.CoProcedimento);
             
+            SetLoadingStatus("Pronto", false);
             StatusTextBlock.Text = $"Encontrados {relacionados.Count()} registro(s) de {filtroSelecionado}";
+        }
+        catch (OperationCanceledException)
+        {
+            SetLoadingStatus("Pronto", false);
+            StatusTextBlock.Text = "Operação cancelada";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Erro ao buscar relacionados:\n\n{ex.Message}", 
-                          "Erro", 
-                          MessageBoxButton.OK, 
-                          MessageBoxImage.Error);
-            StatusTextBlock.Text = "Erro ao buscar relacionados";
+            SetLoadingStatus("Erro", false);
+            
+            // Não mostrar erro ao usuário se for erro de concorrência
+            if (!ex.Message.Contains("lock", StringComparison.OrdinalIgnoreCase) && 
+                !ex.Message.Contains("concurrent", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show($"Erro ao buscar relacionados:\n\n{ex.Message}", 
+                              "Erro", 
+                              MessageBoxButton.OK, 
+                              MessageBoxImage.Error);
+            }
+            else
+            {
+                StatusTextBlock.Text = "Aguarde a operação anterior concluir";
+            }
         }
     }
 
@@ -2088,12 +2501,14 @@ public partial class MainWindow : Window
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Botão
             
             // TextBox para descrição (comum para Detalhes e Descrição)
+            // Para "Descrição": quebra linha (Wrap), sem rolagem horizontal
+            // Para "Detalhes": sem quebra (NoWrap), com rolagem horizontal
             var textBoxDescricao = new TextBox
             {
                 Text = primeiroItem.DescricaoCompleta ?? primeiroItem.Descricao ?? "Nenhuma descrição disponível.",
                 IsReadOnly = true,
                 TextWrapping = TextWrapping.Wrap,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 Margin = new Thickness(10, 5, 10, 5),
                 FontSize = 12,
@@ -2112,7 +2527,12 @@ public partial class MainWindow : Window
                     GridLinesVisibility = DataGridGridLinesVisibility.All,
                     HeadersVisibility = DataGridHeadersVisibility.Column,
                     Margin = new Thickness(10, 5, 10, 5),
-                    VerticalAlignment = VerticalAlignment.Stretch
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    CanUserResizeColumns = true,
+                    CanUserReorderColumns = false,
+                    ColumnWidth = DataGridLength.Auto
                 };
 
                 // Colunas: Comp. | Cód. | Descrição
@@ -2120,21 +2540,27 @@ public partial class MainWindow : Window
                 {
                     Header = "Comp.",
                     Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
-                    Width = new DataGridLength(80)
+                    Width = new DataGridLength(80),
+                    MinWidth = 60,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Cód.",
                     Binding = new System.Windows.Data.Binding("Codigo"),
-                    Width = new DataGridLength(80)
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Descrição",
                     Binding = new System.Windows.Data.Binding("Descricao"),
-                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                    MinWidth = 300,
+                    CanUserResize = true
                 });
 
                 dataGrid.ItemsSource = relacionados;
@@ -2183,7 +2609,12 @@ public partial class MainWindow : Window
                 IsReadOnly = true,
                 GridLinesVisibility = DataGridGridLinesVisibility.All,
                 HeadersVisibility = DataGridHeadersVisibility.Column,
-                Margin = new Thickness(10, 5, 10, 5)
+                Margin = new Thickness(10, 5, 10, 5),
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                CanUserResizeColumns = true,
+                CanUserReorderColumns = false,
+                ColumnWidth = DataGridLength.Auto
             };
 
             // Customizar colunas baseado no tipo de filtro
@@ -2194,14 +2625,18 @@ public partial class MainWindow : Window
                 {
                     Header = "Habil.",
                     Binding = new System.Windows.Data.Binding("Codigo"),
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 // Coluna Comp. com formatação condicional (vermelho quando vazio)
                 var compColumn = new DataGridTemplateColumn
                 {
                     Header = "Comp.",
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 };
                 
                 var compCellTemplate = new DataTemplate();
@@ -2232,7 +2667,9 @@ public partial class MainWindow : Window
                 {
                     Header = "Descrição",
                     Binding = new System.Windows.Data.Binding("Descricao"),
-                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                    MinWidth = 300,
+                    CanUserResize = true
                 });
             }
             else if (tipoFiltro == "CBO")
@@ -2242,21 +2679,27 @@ public partial class MainWindow : Window
                 {
                     Header = "CBO",
                     Binding = new System.Windows.Data.Binding("Codigo"),
-                    Width = 120
+                    Width = new DataGridLength(120),
+                    MinWidth = 100,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Comp.",
                     Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Descrição",
                     Binding = new System.Windows.Data.Binding("Descricao"),
-                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                    MinWidth = 300,
+                    CanUserResize = true
                 });
             }
             else if (tipoFiltro == "Modalidade")
@@ -2266,21 +2709,27 @@ public partial class MainWindow : Window
                 {
                     Header = "Comp.",
                     Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Código",
                     Binding = new System.Windows.Data.Binding("Codigo"),
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Descrição",
                     Binding = new System.Windows.Data.Binding("Descricao"),
-                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                    MinWidth = 300,
+                    CanUserResize = true
                 });
             }
             else if (tipoFiltro == "Instrumento de Registro")
@@ -2290,21 +2739,27 @@ public partial class MainWindow : Window
                 {
                     Header = "Comp.",
                     Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Código",
                     Binding = new System.Windows.Data.Binding("Codigo"),
-                    Width = 100
+                    Width = new DataGridLength(100),
+                    MinWidth = 80,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Descrição",
                     Binding = new System.Windows.Data.Binding("Descricao"),
-                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                    MinWidth = 300,
+                    CanUserResize = true
                 });
             }
             else
@@ -2314,21 +2769,27 @@ public partial class MainWindow : Window
                 {
                     Header = "Código",
                     Binding = new System.Windows.Data.Binding("Codigo"),
-                    Width = 150
+                    Width = new DataGridLength(150),
+                    MinWidth = 100,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Descrição",
                     Binding = new System.Windows.Data.Binding("Descricao"),
-                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                    MinWidth = 300,
+                    CanUserResize = true
                 });
 
                 dataGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = "Informação Adicional",
                     Binding = new System.Windows.Data.Binding("InformacaoAdicional"),
-                    Width = 200
+                    Width = new DataGridLength(200),
+                    MinWidth = 150,
+                    CanUserResize = true
                 });
             }
 
@@ -2413,7 +2874,12 @@ public partial class MainWindow : Window
             IsReadOnly = true,
             GridLinesVisibility = DataGridGridLinesVisibility.All,
             HeadersVisibility = DataGridHeadersVisibility.Column,
-            Margin = new Thickness(10, 5, 10, 5)
+            Margin = new Thickness(10, 5, 10, 5),
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            CanUserResizeColumns = true,
+            CanUserReorderColumns = false,
+            ColumnWidth = DataGridLength.Auto
         };
 
         // Colunas para Serviços: Comp. | Serv. | Descrição Serviço | Class. | Descrição Classificação
@@ -2421,35 +2887,45 @@ public partial class MainWindow : Window
         {
             Header = "Comp.",
             Binding = new System.Windows.Data.Binding("Competencia"),
-            Width = 100
+            Width = new DataGridLength(100),
+            MinWidth = 80,
+            CanUserResize = true
         });
 
         dataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Serv.",
             Binding = new System.Windows.Data.Binding("Codigo"),
-            Width = 80
+            Width = new DataGridLength(100),
+            MinWidth = 80,
+            CanUserResize = true
         });
 
         dataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Descrição Serviço",
             Binding = new System.Windows.Data.Binding("Descricao"),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star),
+            MinWidth = 200,
+            CanUserResize = true
         });
 
         dataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Class.",
             Binding = new System.Windows.Data.Binding("CodigoClassificacao"),
-            Width = 80
+            Width = new DataGridLength(100),
+            MinWidth = 80,
+            CanUserResize = true
         });
 
         dataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Descrição Classificação",
             Binding = new System.Windows.Data.Binding("DescricaoClassificacao"),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star),
+            MinWidth = 200,
+            CanUserResize = true
         });
 
         dataGrid.ItemsSource = servicos.ToList();
@@ -2485,6 +2961,722 @@ public partial class MainWindow : Window
 
         dialog.Content = grid;
         dialog.ShowDialog();
+    }
+
+    private async void FiltrosComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _currentCancellationTokenSource?.Cancel();
+        _currentCancellationTokenSource = new CancellationTokenSource();
+        await AtualizarAreaRelacionadosAsync(_currentCancellationTokenSource.Token);
+    }
+
+    private async Task AtualizarAreaRelacionadosAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Verificar se AreaRelacionados existe
+            if (AreaRelacionados == null)
+            {
+                return;
+            }
+            
+            // Verificar se foi cancelado
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            
+            // Limpar área
+            AreaRelacionados.Children.Clear();
+
+            var procedimento = ProcedimentosDataGrid.SelectedItem as Procedimento;
+            if (procedimento == null)
+            {
+                if (AreaRelacionados != null)
+                {
+                    var msg = new TextBlock
+                    {
+                        Text = "Selecione um procedimento para ver os itens relacionados.",
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Foreground = Brushes.Gray,
+                        FontStyle = FontStyles.Italic
+                    };
+                    AreaRelacionados.Children.Add(msg);
+                }
+                return;
+            }
+
+            if (FiltrosComboBox.SelectedItem is not ComboBoxItem selectedItem)
+            {
+                return;
+            }
+
+            var tipoFiltro = selectedItem.Content?.ToString() ?? string.Empty;
+            var coProcedimento = procedimento.CoProcedimento;
+            
+            if (string.IsNullOrEmpty(tipoFiltro))
+            {
+                return;
+            }
+
+            // Verificar cache
+            var cacheKey = GerarChaveCache(coProcedimento, _competenciaAtiva, tipoFiltro);
+            if (_cacheRelacionados.TryGetValue(cacheKey, out var cachedResult))
+            {
+                RenderizarConteudoRelacionado(cachedResult, tipoFiltro);
+                return;
+            }
+
+            // Mostrar loading
+            SetLoadingStatus($"Carregando {tipoFiltro}...", true);
+            
+            if (AreaRelacionados != null)
+            {
+                var loading = new TextBlock
+                {
+                    Text = "Carregando...",
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                AreaRelacionados.Children.Add(loading);
+            }
+
+            IEnumerable<object>? relacionados = null;
+
+            // Usar fila de requisições para garantir execução sequencial
+            switch (tipoFiltro)
+            {
+                case "Cid10":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarCID10RelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Compatíveis":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarCompativeisRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Habilitação":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarHabilitacoesRelacionadasAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "CBO":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarCBOsRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Serviços":
+                    // Serviços retorna um tipo diferente (ServicoRelacionadoItem)
+                    var servicos = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _procedimentoService.BuscarServicosRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken),
+                        cancellationToken);
+                    RenderizarConteudoRelacionado(servicos.Cast<object>(), tipoFiltro);
+                    SetLoadingStatus("Pronto", false);
+                    return;
+                case "Tipo de Leito":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarTiposLeitoRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Modalidade":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarModalidadesRelacionadasAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Instrumento de Registro":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarInstrumentosRegistroRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Detalhes":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarDetalhesRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Incremento":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarIncrementosRelacionadosAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+                case "Descrição":
+                    relacionados = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => (await _procedimentoService.BuscarDescricaoRelacionadaAsync(coProcedimento, _competenciaAtiva, cancellationToken)).Cast<object>(),
+                        cancellationToken);
+                    break;
+            }
+
+            if (relacionados != null)
+            {
+                // Armazenar no cache
+                _cacheRelacionados[cacheKey] = relacionados;
+                RenderizarConteudoRelacionado(relacionados, tipoFiltro);
+            }
+            
+            SetLoadingStatus("Pronto", false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Requisição foi cancelada - não fazer nada
+            SetLoadingStatus("Pronto", false);
+        }
+        catch (Exception ex)
+        {
+            SetLoadingStatus("Erro", false);
+            
+            // Verificar se AreaRelacionados existe antes de usar
+            if (AreaRelacionados != null)
+            {
+                try
+                {
+                    AreaRelacionados.Children.Clear();
+                    var err = new TextBlock
+                    {
+                        Text = $"Erro ao carregar: {ex.Message}",
+                        Foreground = Brushes.Red,
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(5)
+                    };
+                    AreaRelacionados.Children.Add(err);
+                }
+                catch
+                {
+                    // Se ainda assim falhar, apenas logar o erro
+                    System.Diagnostics.Debug.WriteLine($"Erro ao exibir mensagem de erro na área relacionada: {ex.Message}");
+                }
+            }
+            else
+            {
+                // Se AreaRelacionados não existe, mostrar erro em MessageBox apenas se não for erro de concorrência
+                if (!ex.Message.Contains("lock", StringComparison.OrdinalIgnoreCase) && 
+                    !ex.Message.Contains("concurrent", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show($"Erro ao carregar dados relacionados:\n\n{ex.Message}", 
+                                  "Erro", 
+                                  MessageBoxButton.OK, 
+                                  MessageBoxImage.Error);
+                }
+            }
+        }
+    }
+
+    private void RenderizarConteudoRelacionado(IEnumerable<object> itens, string tipoFiltro)
+    {
+        // Verificar se AreaRelacionados existe
+        if (AreaRelacionados == null)
+        {
+            return;
+        }
+        
+        AreaRelacionados.Children.Clear();
+
+        if (itens == null || !itens.Cast<object>().Any())
+        {
+            var msg = new TextBlock
+            {
+                Text = "Nenhum registro encontrado.",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brushes.Red,
+                FontWeight = FontWeights.Bold
+            };
+            AreaRelacionados.Children.Add(msg);
+            return;
+        }
+
+        // Grid container
+        var grid = new Grid();
+        
+        // Se for Serviços, é um caso à parte com colunas específicas
+        if (tipoFiltro == "Serviços")
+        {
+            var dataGridServ = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                IsReadOnly = true,
+                GridLinesVisibility = DataGridGridLinesVisibility.All,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                Margin = new Thickness(0),
+                BorderThickness = new Thickness(0),
+                ItemsSource = itens
+            };
+
+            dataGridServ.Columns.Add(new DataGridTextColumn { Header = "Comp.", Binding = new Binding("Competencia"), Width = new DataGridLength(80), MinWidth = 60, CanUserResize = true });
+            dataGridServ.Columns.Add(new DataGridTextColumn { Header = "Serv.", Binding = new Binding("Codigo"), Width = new DataGridLength(80), MinWidth = 60, CanUserResize = true });
+            dataGridServ.Columns.Add(new DataGridTextColumn { Header = "Descrição Serviço", Binding = new Binding("Descricao"), Width = new DataGridLength(1, DataGridLengthUnitType.Star), MinWidth = 200, CanUserResize = true });
+            dataGridServ.Columns.Add(new DataGridTextColumn { Header = "Class.", Binding = new Binding("CodigoClassificacao"), Width = new DataGridLength(80), MinWidth = 60, CanUserResize = true });
+            dataGridServ.Columns.Add(new DataGridTextColumn { Header = "Descrição Classificação", Binding = new Binding("DescricaoClassificacao"), Width = new DataGridLength(1, DataGridLengthUnitType.Star), MinWidth = 200, CanUserResize = true });
+
+            if (AreaRelacionados != null)
+            {
+                AreaRelacionados.Children.Add(dataGridServ);
+            }
+            return;
+        }
+
+        // Para os demais tipos (RelacionadoItem)
+        var listaItens = itens.Cast<RelacionadoItem>().ToList();
+        // Para "Descrição", mostra apenas um TextBox grande (sem DataGrid)
+        // Para "Detalhes", mostra DataGrid + TextBox
+        bool isDescricao = tipoFiltro == "Descrição";
+        bool isDetalhes = tipoFiltro == "Detalhes";
+
+        if (isDescricao)
+        {
+            // Para Descrição: apenas um TextBox grande ocupando toda a área
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        }
+        else if (isDetalhes)
+        {
+            // Para Detalhes: DataGrid + Splitter + TextBox
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // DataGrid
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(5) }); // Splitter
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // TextBox
+        }
+        else
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        }
+
+        var dataGrid = new DataGrid
+        {
+            AutoGenerateColumns = false,
+            IsReadOnly = true,
+            GridLinesVisibility = DataGridGridLinesVisibility.All,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            Margin = new Thickness(0),
+            BorderThickness = new Thickness(0),
+            ItemsSource = listaItens,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            CanUserResizeColumns = true,
+            CanUserReorderColumns = false,
+            ColumnWidth = DataGridLength.Auto
+        };
+
+        // Configuração de colunas baseada no tipo
+        if (tipoFiltro == "Modalidade" || tipoFiltro == "Instrumento de Registro")
+        {
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Comp.",
+                Binding = new Binding("InformacaoAdicional"),
+                Width = new DataGridLength(80),
+                MinWidth = 60,
+                CanUserResize = true
+            });
+        }
+        else if (tipoFiltro == "Habilitação")
+        {
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Comp.",
+                Binding = new Binding("InformacaoAdicional") { Converter = new HabilitaçãoGrupoConverter() },
+                Width = new DataGridLength(80),
+                MinWidth = 60,
+                CanUserResize = true
+            });
+        }
+
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Código",
+            Binding = new Binding("Codigo"),
+            Width = new DataGridLength(100),
+            MinWidth = 80,
+            CanUserResize = true
+        });
+
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Descrição",
+            Binding = new Binding("Descricao"),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            MinWidth = 300,
+            CanUserResize = true
+        });
+
+        if (tipoFiltro != "Modalidade" && tipoFiltro != "Instrumento de Registro" && tipoFiltro != "Habilitação")
+        {
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Informação Adicional",
+                Binding = new Binding("InformacaoAdicional"),
+                Width = new DataGridLength(150),
+                MinWidth = 100,
+                CanUserResize = true
+            });
+        }
+
+        // Para "Descrição", mostra apenas um TextBox grande com a descrição
+        if (isDescricao)
+        {
+            var primeiroItem = listaItens.FirstOrDefault();
+            var textBoxDescricao = new TextBox
+            {
+                Text = primeiroItem != null 
+                    ? (primeiroItem.DescricaoCompleta ?? primeiroItem.Descricao ?? "Nenhuma descrição disponível.")
+                    : "Nenhuma descrição disponível.",
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Margin = new Thickness(5),
+                Padding = new Thickness(5),
+                FontSize = 12,
+                AcceptsReturn = true,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            Grid.SetRow(textBoxDescricao, 0);
+            grid.Children.Add(textBoxDescricao);
+        }
+        else
+        {
+            // Para outros tipos (incluindo Detalhes), mostra DataGrid
+            Grid.SetRow(dataGrid, 0);
+            grid.Children.Add(dataGrid);
+
+            // Para "Detalhes", adiciona TextBox abaixo do DataGrid
+            if (isDetalhes)
+            {
+                var splitter = new GridSplitter
+                {
+                    Height = 5,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Background = Brushes.LightGray
+                };
+                Grid.SetRow(splitter, 1);
+                grid.Children.Add(splitter);
+
+                var textBoxDesc = new TextBox
+                {
+                    TextWrapping = TextWrapping.Wrap,
+                    AcceptsReturn = true,
+                    IsReadOnly = true,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Margin = new Thickness(0, 5, 0, 0),
+                    Padding = new Thickness(5)
+                };
+                Grid.SetRow(textBoxDesc, 2);
+                grid.Children.Add(textBoxDesc);
+
+                // Evento de seleção
+                dataGrid.SelectionChanged += (s, e) =>
+                {
+                    if (dataGrid.SelectedItem is RelacionadoItem item)
+                    {
+                        textBoxDesc.Text = !string.IsNullOrEmpty(item.DescricaoCompleta) 
+                            ? item.DescricaoCompleta 
+                            : item.Descricao;
+                    }
+                };
+
+                // Selecionar primeiro item se houver
+                if (listaItens.Any())
+                {
+                    dataGrid.SelectedIndex = 0;
+                }
+            }
+        }
+
+        if (AreaRelacionados != null)
+        {
+            AreaRelacionados.Children.Add(grid);
+        }
+    }
+
+    /// <summary>
+    /// Obtém o encoding Windows-1252 de forma segura, com fallback para ISO-8859-1
+    /// </summary>
+    private static Encoding GetWindows1252Encoding()
+    {
+        try
+        {
+            return Encoding.GetEncoding(1252);
+        }
+        catch
+        {
+            try
+            {
+                return Encoding.GetEncoding("Windows-1252");
+            }
+            catch
+            {
+                // Fallback para ISO-8859-1 (compatível para caracteres brasileiros)
+                return Encoding.GetEncoding("ISO-8859-1");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Testa inserção, leitura e validação de acentuação - Versão simplificada
+    /// </summary>
+    private async Task TestarAcentuacaoAsync()
+    {
+        var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), 
+            $"TesteAcentuacao_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+        
+        var log = new StringBuilder();
+        log.AppendLine("=== TESTE DE ACENTUAÇÃO ===");
+        log.AppendLine($"Data/Hora: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        log.AppendLine();
+
+        ProcedimentoComum? procedimentoTeste = null;
+
+        try
+        {
+            // 1. Preparar dados de teste
+            var textoTeste = "AÇÕES RELACIONADAS A DOAÇÃO DE ÓRGÃOS E TECIDOS PARA TRANSPLANTE";
+            log.AppendLine($"Texto de teste: {textoTeste}");
+            log.AppendLine();
+
+            // 2. Obter próximo código
+            var proximoCodigo = await _procedimentoComumService.ObterProximoCodigoAsync();
+            log.AppendLine($"Código gerado: {proximoCodigo}");
+            log.AppendLine();
+
+            // 3. Criar e inserir
+            procedimentoTeste = new ProcedimentoComum
+            {
+                PrcCod = proximoCodigo,
+                PrcCodProc = $"TESTE{proximoCodigo}",
+                PrcNoProcedimento = textoTeste,
+                PrcObservacoes = "TESTE: ção, ão, ões, ç, á, é, í, ó, ú"
+            };
+
+            log.AppendLine("=== INSERÇÃO ===");
+            log.AppendLine($"Inserindo: {procedimentoTeste.PrcNoProcedimento}");
+            await _procedimentoComumService.AdicionarAsync(procedimentoTeste);
+            log.AppendLine("✓ Inserido com sucesso");
+            log.AppendLine();
+
+            // 4. Aguardar e ler de volta
+            await Task.Delay(300);
+            log.AppendLine("=== LEITURA ===");
+            var lido = await _procedimentoComumService.BuscarPorCodigoAsync(procedimentoTeste.PrcCod);
+            
+            if (lido == null)
+            {
+                log.AppendLine("✗ ERRO: Registro não encontrado após inserção!");
+                File.WriteAllText(logPath, log.ToString(), Encoding.UTF8);
+                MessageBox.Show("Erro: Registro não encontrado após inserção", "Erro", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            log.AppendLine($"Lido: {lido.PrcNoProcedimento}");
+            log.AppendLine();
+            
+            // Debug: Mostrar bytes do texto original e lido
+            log.AppendLine("=== DEBUG BYTES ===");
+            // Obtém encoding Windows-1252 com fallback seguro (mesmo padrão usado nos repositórios)
+            Encoding encoding1252;
+            try
+            {
+                encoding1252 = Encoding.GetEncoding(1252);
+            }
+            catch
+            {
+                try
+                {
+                    encoding1252 = Encoding.GetEncoding("Windows-1252");
+                }
+                catch
+                {
+                    encoding1252 = Encoding.GetEncoding("ISO-8859-1"); // Fallback compatível
+                }
+            }
+            
+            var bytesOriginal = encoding1252.GetBytes(textoTeste);
+            var bytesLido = lido.PrcNoProcedimento != null ? encoding1252.GetBytes(lido.PrcNoProcedimento) : Array.Empty<byte>();
+            
+            log.AppendLine($"Bytes original (Windows-1252): {string.Join(", ", bytesOriginal.Select(b => $"0x{b:X2}"))}");
+            log.AppendLine($"Bytes lido (Windows-1252):     {string.Join(", ", bytesLido.Select(b => $"0x{b:X2}"))}");
+            log.AppendLine($"Bytes são iguais: {bytesOriginal.SequenceEqual(bytesLido)}");
+            log.AppendLine();
+            
+            // Debug: Verificar bytes do "Ç" especificamente
+            var indiceCedilha = textoTeste.IndexOf('Ç');
+            if (indiceCedilha >= 0 && indiceCedilha < bytesOriginal.Length)
+            {
+                log.AppendLine($"Byte do 'Ç' no original: 0x{bytesOriginal[indiceCedilha]:X2} (deveria ser 0xC7)");
+            }
+            if (lido.PrcNoProcedimento != null)
+            {
+                var indiceCedilhaLido = lido.PrcNoProcedimento.IndexOf('Ç');
+                if (indiceCedilhaLido < 0)
+                {
+                    // Verifica se tem "Ã" seguido de algo
+                    var indiceA = lido.PrcNoProcedimento.IndexOf('Ã');
+                    if (indiceA >= 0 && indiceA + 1 < bytesLido.Length)
+                    {
+                        log.AppendLine($"Encontrado 'Ã' na posição {indiceA}, bytes: 0x{bytesLido[indiceA]:X2} 0x{bytesLido[indiceA + 1]:X2}");
+                        log.AppendLine($"  Isso sugere que foi salvo como UTF-8 (0xC3 0x87) ao invés de Windows-1252 (0xC7)");
+                    }
+                }
+                else
+                {
+                    log.AppendLine($"Byte do 'Ç' no lido: 0x{bytesLido[indiceCedilhaLido]:X2}");
+                }
+            }
+            
+            // Debug: Comparar primeiros bytes
+            log.AppendLine();
+            log.AppendLine("Primeiros 10 bytes comparados:");
+            for (int i = 0; i < Math.Min(10, Math.Min(bytesOriginal.Length, bytesLido.Length)); i++)
+            {
+                bool igual = bytesOriginal[i] == bytesLido[i];
+                log.AppendLine($"  Pos {i}: Original=0x{bytesOriginal[i]:X2}, Lido=0x{bytesLido[i]:X2}, {(igual ? "✓" : "✗")}");
+            }
+            log.AppendLine();
+
+            // 5. Validação simples e direta
+            log.AppendLine("=== VALIDAÇÃO ===");
+            bool textoIgual = lido.PrcNoProcedimento == textoTeste;
+            // Verifica se os acentos presentes no texto de teste foram preservados
+            bool temAcentos = lido.PrcNoProcedimento?.Contains("Ç") == true && 
+                             lido.PrcNoProcedimento.Contains("Õ") == true &&
+                             lido.PrcNoProcedimento.Contains("Ã") == true &&
+                             lido.PrcNoProcedimento.Contains("Ó") == true;
+
+            log.AppendLine($"Texto original: {textoTeste}");
+            log.AppendLine($"Texto lido:     {lido.PrcNoProcedimento ?? "(null)"}");
+            log.AppendLine($"São iguais: {textoIgual}");
+            log.AppendLine($"Tem acentos: {temAcentos}");
+            log.AppendLine();
+
+            // 6. Verificar caracteres específicos
+            var caracteres = new[] { 'Ç', 'Õ', 'Ã', 'Ó', 'Á' };
+            log.AppendLine("Verificação de caracteres:");
+            bool todosCorretos = true;
+            foreach (var c in caracteres)
+            {
+                bool originalTem = textoTeste.Contains(c);
+                bool lidoTem = lido.PrcNoProcedimento?.Contains(c) == true;
+                bool correto = originalTem == lidoTem;
+                todosCorretos = todosCorretos && correto;
+                log.AppendLine($"  {c}: Original={originalTem}, Lido={lidoTem}, {(correto ? "✓" : "✗")}");
+            }
+            log.AppendLine();
+
+            // 7. Resultado final
+            bool sucesso = textoIgual && temAcentos && todosCorretos;
+            log.AppendLine("=== RESULTADO ===");
+            if (sucesso)
+            {
+                log.AppendLine("✓✓✓ TESTE PASSOU - ACENTUAÇÃO CORRETA ✓✓✓");
+            }
+            else
+            {
+                log.AppendLine("✗✗✗ TESTE FALHOU - ACENTUAÇÃO INCORRETA ✗✗✗");
+                log.AppendLine();
+                log.AppendLine("Diferenças encontradas:");
+                if (!textoIgual)
+                {
+                    log.AppendLine($"  - Textos não são idênticos");
+                    log.AppendLine($"    Original: [{textoTeste}]");
+                    log.AppendLine($"    Lido:     [{lido.PrcNoProcedimento}]");
+                }
+                if (!temAcentos)
+                {
+                    log.AppendLine($"  - Caracteres acentuados não foram preservados");
+                }
+            }
+
+            // 8. Limpar
+            log.AppendLine();
+            log.AppendLine("=== LIMPEZA ===");
+            try
+            {
+                await _procedimentoComumService.RemoverAsync(procedimentoTeste.PrcCod);
+                log.AppendLine("✓ Registro de teste excluído");
+            }
+            catch (Exception ex)
+            {
+                log.AppendLine($"✗ Erro ao excluir: {ex.Message}");
+            }
+
+            // 9. Salvar e mostrar resultado
+            File.WriteAllText(logPath, log.ToString(), Encoding.UTF8);
+
+            var mensagem = sucesso
+                ? $"✓ TESTE PASSOU!\n\nAcentuação preservada corretamente.\n\nLog: {logPath}"
+                : $"✗ TESTE FALHOU!\n\nAcentuação não foi preservada.\n\nLog: {logPath}";
+
+            MessageBox.Show(mensagem, sucesso ? "Sucesso" : "Erro",
+                MessageBoxButton.OK, sucesso ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            log.AppendLine();
+            log.AppendLine("=== ERRO ===");
+            log.AppendLine($"Mensagem: {ex.Message}");
+            log.AppendLine($"Tipo: {ex.GetType().Name}");
+            if (ex.InnerException != null)
+            {
+                log.AppendLine($"Erro interno: {ex.InnerException.Message}");
+            }
+            log.AppendLine();
+            log.AppendLine("Stack Trace:");
+            log.AppendLine(ex.StackTrace);
+
+            // Tentar limpar mesmo em caso de erro
+            if (procedimentoTeste != null)
+            {
+                try
+                {
+                    await _procedimentoComumService.RemoverAsync(procedimentoTeste.PrcCod);
+                    log.AppendLine("✓ Registro de teste excluído após erro");
+                }
+                catch { }
+            }
+
+            File.WriteAllText(logPath, log.ToString(), Encoding.UTF8);
+
+            MessageBox.Show($"Erro no teste:\n\n{ex.Message}\n\nLog: {logPath}",
+                "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Normaliza string para Windows-1252 (garante acentuação correta no DataGrid de Procedimentos Comuns)
+    /// </summary>
+    private static string NormalizeStringToWindows1252(string text, Encoding encoding1252)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        try
+        {
+            // Converte a string para bytes usando Windows-1252 e depois de volta para string
+            // Isso garante que a string está no encoding correto
+            byte[] bytes = encoding1252.GetBytes(text);
+            return encoding1252.GetString(bytes);
+        }
+        catch
+        {
+            // Se falhar, retorna o texto original
+            return text;
+        }
+    }
+
+    /// <summary>
+    /// Handler para garantir que o scroll do mouse funcione corretamente na TreeView
+    /// </summary>
+    private void TreeViewScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is ScrollViewer scrollViewer)
+        {
+            // Converte o delta do mouse (geralmente 120 ou -120) para pixels de scroll
+            // Divide por 3 para obter um scroll suave (ajuste conforme necessário)
+            double offset = scrollViewer.VerticalOffset - (e.Delta / 3.0);
+            scrollViewer.ScrollToVerticalOffset(Math.Max(0, Math.Min(offset, scrollViewer.ScrollableHeight)));
+            e.Handled = true;
+        }
     }
 }
 

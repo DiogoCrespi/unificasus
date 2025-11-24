@@ -1,0 +1,243 @@
+[18:04:05] [INFO] Iniciando importação...
+[18:04:05] [INFO] Extraindo arquivo ZIP...
+[18:04:05] [INFO] Arquivos extraídos para: C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954
+[18:04:05] [INFO] Versão: 1.1
+[18:04:05] [INFO] Competência: 202510
+[18:04:05] [INFO] Total de tabelas: 41
+[18:04:05] [INFO] Iniciando processamento de tabelas...
+[18:04:05] [INFO] Iniciando importação de C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954
+[18:04:05] [INFO] Layout parseado: 7 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_excecao_compatibilidade_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_cid_layout.txt
+[18:04:05] [INFO] Layout parseado: 7 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_compativel_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_comp_rede_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_detalhe_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_habilitacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 6 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_incremento_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_leito_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_modalidade_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_ocupacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_origem_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_registro_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_regra_cond_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_renases_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_servico_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_sia_sih_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\rl_procedimento_tuss_layout.txt
+[18:04:05] [INFO] Layout parseado: 6 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_cid_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_componente_rede_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_descricao_detalhe_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_descricao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_detalhe_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_financiamento_layout.txt
+[18:04:05] [INFO] Layout parseado: 5 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_forma_organizacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_grupo_habilitacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_grupo_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_habilitacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_modalidade_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_ocupacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 16 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_procedimento_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_rede_atencao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_registro_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_regra_condicionada_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_renases_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_rubrica_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_servico_classificacao_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_servico_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_sia_sih_layout.txt
+[18:04:05] [INFO] Layout parseado: 4 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_sub_grupo_layout.txt
+[18:04:05] [INFO] Layout parseado: 3 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_tipo_leito_layout.txt
+[18:04:05] [INFO] Layout parseado: 2 colunas encontradas em C:\Users\Usuario\AppData\Local\Temp\SigtapImport\TabelaUnificada_202510_v2510160954\tb_tuss_layout.txt
+[18:04:05] [INFO] Descobertas 41 tabelas no diretório
+[18:04:05] [INFO] Encontradas 41 tabelas para importar
+[18:04:05] [INFO] Verificando e preparando tabelas (criando tabelas e adicionando colunas faltantes)...
+[18:04:06] [INFO] Tabela RL_EXCECAO_COMPATIBILIDADE já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_CID já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_COMPATIVEL já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Criando tabela RL_PROCEDIMENTO_COMP_REDE...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_COMP_REDE criada com sucesso!
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_DETALHE já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_HABILITACAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_INCREMENTO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_LEITO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_MODALIDADE já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_OCUPACAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_ORIGEM já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_REGISTRO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Criando tabela RL_PROCEDIMENTO_REGRA_COND...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_REGRA_COND criada com sucesso!
+[18:04:06] [INFO] Criando tabela RL_PROCEDIMENTO_RENASES...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_RENASES criada com sucesso!
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_SERVICO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_SIA_SIH já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Criando tabela RL_PROCEDIMENTO_TUSS...
+[18:04:06] [INFO] Tabela RL_PROCEDIMENTO_TUSS criada com sucesso!
+[18:04:06] [INFO] Tabela TB_CID já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Encontradas 2 colunas faltantes em TB_CID: TP_ESTADIO, VL_CAMPOS_IRRADIADOS
+[18:04:06] [INFO] Coluna TP_ESTADIO adicionada à tabela TB_CID
+[18:04:06] [INFO] Coluna VL_CAMPOS_IRRADIADOS adicionada à tabela TB_CID
+[18:04:06] [INFO] Criando tabela TB_COMPONENTE_REDE...
+[18:04:06] [INFO] Tabela TB_COMPONENTE_REDE criada com sucesso!
+[18:04:06] [INFO] Tabela TB_DESCRICAO_DETALHE já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_DESCRICAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_DETALHE já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_FINANCIAMENTO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_FORMA_ORGANIZACAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_GRUPO_HABILITACAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_GRUPO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_HABILITACAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_MODALIDADE já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_OCUPACAO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Tabela TB_PROCEDIMENTO já existe, verificando colunas faltantes...
+[18:04:06] [INFO] Criando tabela TB_REDE_ATENCAO...
+[18:04:06] [INFO] Tabela TB_REDE_ATENCAO criada com sucesso!
+[18:04:06] [INFO] Tabela TB_REGISTRO já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Criando tabela TB_REGRA_CONDICIONADA...
+[18:04:07] [INFO] Tabela TB_REGRA_CONDICIONADA criada com sucesso!
+[18:04:07] [INFO] Criando tabela TB_RENASES...
+[18:04:07] [INFO] Tabela TB_RENASES criada com sucesso!
+[18:04:07] [INFO] Tabela TB_RUBRICA já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Tabela TB_SERVICO_CLASSIFICACAO já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Tabela TB_SERVICO já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Tabela TB_SIA_SIH já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Tabela TB_SUB_GRUPO já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Tabela TB_TIPO_LEITO já existe, verificando colunas faltantes...
+[18:04:07] [INFO] Criando tabela TB_TUSS...
+[18:04:07] [INFO] Tabela TB_TUSS criada com sucesso!
+[18:04:07] [INFO] Verificação de tabelas concluída.
+[18:04:07] [INFO] [1/41] Importando TB_DETALHE...
+[18:04:07] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_detalhe.txt
+[18:04:07] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:07] [INFO] Processando 48 linhas de TB_DETALHE...
+[18:04:09] [INFO] ✓ TB_DETALHE: 48 sucessos, 0 erros em 00:01
+[18:04:09] [INFO] ✓ TB_DETALHE: 48 registros importados
+[18:04:09] [INFO] [2/41] Importando TB_FINANCIAMENTO...
+[18:04:09] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_financiamento.txt
+[18:04:09] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:09] [INFO] Processando 7 linhas de TB_FINANCIAMENTO...
+[18:04:09] [INFO] ✓ TB_FINANCIAMENTO: 7 sucessos, 0 erros em 00:00
+[18:04:09] [INFO] ✓ TB_FINANCIAMENTO: 7 registros importados
+[18:04:09] [INFO] [3/41] Importando TB_MODALIDADE...
+[18:04:09] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_modalidade.txt
+[18:04:09] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:09] [INFO] Processando 4 linhas de TB_MODALIDADE...
+[18:04:09] [INFO] ✓ TB_MODALIDADE: 4 sucessos, 0 erros em 00:00
+[18:04:09] [INFO] ✓ TB_MODALIDADE: 4 registros importados
+[18:04:09] [INFO] [4/41] Importando TB_REGISTRO...
+[18:04:09] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_registro.txt
+[18:04:09] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:09] [INFO] Processando 10 linhas de TB_REGISTRO...
+[18:04:09] [INFO] ✓ TB_REGISTRO: 10 sucessos, 0 erros em 00:00
+[18:04:09] [INFO] ✓ TB_REGISTRO: 10 registros importados
+[18:04:09] [INFO] [5/41] Importando TB_RUBRICA...
+[18:04:09] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_rubrica.txt
+[18:04:09] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:09] [INFO] Processando 41 linhas de TB_RUBRICA...
+[18:04:09] [WARN] String truncada na coluna NO_RUBRICA da tabela TB_RUBRICA: 100 bytes excede máximo seguro 98 bytes (limite: 100 bytes, 100 caracteres, acentos: True). Valor original: 'Atendimento/acompanhamento em reabilitação física,...'
+[18:04:09] [ERROR] Erro ao inserir registro em TB_RUBRICA [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_RUBRICA: '040009' (6 chars, 6 bytes, limite: 6, tipo: VARCHAR2); DT_COMPETENCIA: '202510' (6 chars, 6 bytes, limite: 6, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:09] [ERROR] Erro ao inserir/atualizar em TB_RUBRICA [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:09] [ERROR] Linha 1: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:11] [INFO] ✓ TB_RUBRICA: 40 sucessos, 1 erros em 00:01
+[18:04:11] [INFO]   Erros por categoria: Truncamento de string: 1
+[18:04:11] [INFO] ✓ TB_RUBRICA: 40 registros importados
+[18:04:11] [INFO] [6/41] Importando TB_TIPO_LEITO...
+[18:04:11] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_tipo_leito.txt
+[18:04:11] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:11] [INFO] Processando 41 linhas de TB_TIPO_LEITO...
+[18:04:12] [INFO] ✓ TB_TIPO_LEITO: 41 sucessos, 0 erros em 00:01
+[18:04:12] [INFO] ✓ TB_TIPO_LEITO: 41 registros importados
+[18:04:12] [INFO] [7/41] Importando TB_CID...
+[18:04:12] [INFO] Encoding detectado: iso-8859-1 (score: 10) para arquivo tb_cid.txt
+[18:04:12] [DEBUG] Encoding detectado: iso-8859-1
+[18:04:12] [INFO] Processando 14242 linhas de TB_CID...
+[18:04:16] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A150' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:16] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:16] [ERROR] Linha 70: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:16] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A155' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:16] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:16] [ERROR] Linha 75: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:17] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A158' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Linha 78: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:17] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A159' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Linha 79: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:17] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A163' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Linha 84: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:17] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A164' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Linha 85: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:17] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A168' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Linha 88: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:17] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A169' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:17] [ERROR] Linha 89: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:28] [WARN] String truncada na coluna NO_CID da tabela TB_CID: 100 bytes excede máximo seguro 98 bytes (limite: 100 bytes, 100 caracteres, acentos: True). Valor original: 'Infecção gonocócica do trato genitur. inferior, se...'
+[18:04:28] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A540' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '0' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:28] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:28] [ERROR] Linha 289: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:28] [WARN] String truncada na coluna NO_CID da tabela TB_CID: 100 bytes excede máximo seguro 98 bytes (limite: 100 bytes, 100 caracteres, acentos: True). Valor original: 'Infecção gonocócica do trato genitur. inferior, co...'
+[18:04:28] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'A541' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '0' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:28] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:28] [ERROR] Linha 290: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:42] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'B213' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:42] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:42] [ERROR] Linha 545: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:42] [ERROR] Erro ao inserir registro em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Valores problemáticos: CO_CID: 'B232' (4 chars, 4 bytes, limite: 4, tipo: VARCHAR2); TP_AGRAVO: '1' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_SEXO: 'I' (1 chars, 1 bytes, limite: 1, tipo: CHAR); TP_ESTADIO: 'N' (1 chars, 1 bytes, limite: 1, tipo: CHAR). Sugestão: String será truncada automaticamente
+[18:04:42] [ERROR] Erro ao inserir/atualizar em TB_CID [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation. Sugestão: String será truncada automaticamente
+[18:04:42] [ERROR] Linha 557: Erro ao inserir no banco [Truncamento de string]: arithmetic exception, numeric overflow, or string truncation
+string right truncation
+[18:04:49] [AVISO] Solicitando cancelamento...
+[18:04:49] [ERROR] Erro ao inserir registro em TB_CID [Erro desconhecido]: The operation was canceled.. Sugestão: Analisar mensagem de erro para mais detalhes
+[18:04:49] [ERROR] Erro ao inserir/atualizar em TB_CID [Erro desconhecido]: The operation was canceled.. Sugestão: Analisar mensagem de erro para mais detalhes
+[18:04:49] [ERROR] Linha 698: Erro ao inserir no banco [Erro desconhecido]: The operation was canceled.
+[18:04:49] [INFO] ✓ TB_CID: 685 registros importados
+[18:04:49] [WARN] Importação cancelada pelo usuário
+[18:04:49] [INFO] Importação concluída em 00:44
+[18:04:49] 
+[18:04:49] === IMPORTAÇÃO CONCLUÍDA ===
+[18:04:49] Tabelas processadas: 7
+[18:04:49] Tabelas com sucesso: 7
+[18:04:49] Registros importados: 835
+[18:04:49] Registros com erro: 14
+[18:04:49] [INFO] Registrando competência 202510 na TB_COMPETENCIA_ATIVA...
+[18:04:49] [AVISO] Erro ao registrar competência: The operation was canceled.

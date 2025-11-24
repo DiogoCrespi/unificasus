@@ -1,0 +1,40 @@
+-- Verificar duplicatas do CID C73 em TODOS os procedimentos
+
+-- 1. Total de registros do C73
+SELECT 
+    'Total registros C73' AS INFO,
+    COUNT(*) AS TOTAL
+FROM RL_PROCEDIMENTO_CID
+WHERE CO_CID = 'C73'
+  AND DT_COMPETENCIA = '202510';
+
+-- 2. Procedimentos com duplicatas do C73
+SELECT 
+    'Procedimentos com duplicatas C73' AS INFO,
+    CO_PROCEDIMENTO,
+    COUNT(*) AS TOTAL_DUPLICATAS,
+    MIN(INDICE) AS INDICE_MANTIDO,
+    LIST(INDICE, ', ') AS INDICES_DUPLICATAS
+FROM RL_PROCEDIMENTO_CID
+WHERE CO_CID = 'C73'
+  AND DT_COMPETENCIA = '202510'
+GROUP BY CO_PROCEDIMENTO
+HAVING COUNT(*) > 1
+ORDER BY COUNT(*) DESC;
+
+-- 3. Ver algumas descrições diferentes do C73
+SELECT 
+    FIRST 10
+    CO_PROCEDIMENTO,
+    INDICE,
+    NO_CID,
+    LENGTH(NO_CID) AS TAMANHO,
+    CASE 
+        WHEN UPPER(TRIM(NO_CID)) = TRIM(NO_CID) THEN 'MAIUSCULAS'
+        ELSE 'Minusculas/Misturadas'
+    END AS TIPO
+FROM RL_PROCEDIMENTO_CID
+WHERE CO_CID = 'C73'
+  AND DT_COMPETENCIA = '202510'
+ORDER BY CO_PROCEDIMENTO, INDICE;
+

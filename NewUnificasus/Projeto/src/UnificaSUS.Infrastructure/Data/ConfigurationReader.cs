@@ -67,6 +67,12 @@ public class ConfigurationReader : IConfigurationReader
 
     public string GetConnectionString()
     {
+        // Verifica se o arquivo existe antes de tentar ler
+        if (!ConfigFileExists())
+        {
+            throw new FileNotFoundException($"Arquivo de configuração não encontrado: {ConfigFilePath}");
+        }
+        
         var databasePath = GetDatabasePath();
         
         // Detecta se é conexão local (embedded) ou servidor (remoto/localhost)
@@ -103,13 +109,16 @@ public class ConfigurationReader : IConfigurationReader
         }
         
         // Constrói a string de conexão Firebird
-        // Tenta usar NONE primeiro para evitar erro "Invalid character set" em servidores remotos
-        // O FirebirdReaderHelper fará a conversão manual de encoding
-        // Se o servidor suportar WIN1252, pode ser alterado depois
-        return $"Database={databasePath};" +
+        // IMPORTANTE: Este banco NÃO suporta Charset=WIN1252 (gera erro "Invalid character set specified")
+        // Por isso usamos Charset=NONE e fazemos conversão manual de encoding
+        // O FirebirdReaderHelper fará a conversão manual de encoding na leitura
+        // A inserção também precisa garantir que os bytes sejam Windows-1252
+        var charset = "NONE"; // Banco não suporta WIN1252, usa NONE e conversão manual
+        
+        var connectionString = $"Database={databasePath};" +
                $"User={DefaultUser};" +
                $"Password={DefaultPassword};" +
-               $"Charset=NONE;" +
+               $"Charset={charset};" +
                $"Dialect=3;" +
                $"Role=;" +
                $"Connection lifetime=0;" +
@@ -117,6 +126,14 @@ public class ConfigurationReader : IConfigurationReader
                $"Pooling=true;" +
                $"Packet Size=8192;" +
                $"ServerType={serverType};";
+        
+        // Log para debug (pode ser removido em produção)
+        System.Diagnostics.Debug.WriteLine($"[ConfigurationReader] Arquivo: {ConfigFilePath}");
+        System.Diagnostics.Debug.WriteLine($"[ConfigurationReader] Database Path: {databasePath}");
+        System.Diagnostics.Debug.WriteLine($"[ConfigurationReader] Server Type: {(serverType == 0 ? "Server" : "Embedded")}");
+        System.Diagnostics.Debug.WriteLine($"[ConfigurationReader] Charset: {charset}");
+        
+        return connectionString;
     }
 }
 

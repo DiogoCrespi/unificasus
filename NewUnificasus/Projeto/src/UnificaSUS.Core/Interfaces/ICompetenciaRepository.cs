@@ -21,5 +21,10 @@ public interface ICompetenciaRepository
     /// Lista todas as competências disponíveis
     /// </summary>
     Task<IEnumerable<string>> ListarDisponiveisAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Registra uma nova competência na tabela TB_COMPETENCIA_ATIVA sem ativá-la
+    /// </summary>
+    Task<bool> RegistrarCompetenciaAsync(string competencia, CancellationToken cancellationToken = default);
 }
 

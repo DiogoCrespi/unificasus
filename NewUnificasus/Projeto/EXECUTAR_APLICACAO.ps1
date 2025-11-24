@@ -74,5 +74,5 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Aplicacao finalizada." -ForegroundColor Green
-Read-Host "Pressione Enter para sair"
+Write-Host "Pressione Enter para sair"
 

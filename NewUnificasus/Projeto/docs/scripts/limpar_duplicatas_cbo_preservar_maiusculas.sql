@@ -1,0 +1,124 @@
+-- Script para limpar duplicatas em RL_PROCEDIMENTO_OCUPACAO (CBO)
+-- ESTRATÉGIA: Preservar linhas em MAIÚSCULAS (sistema antigo) e remover duplicatas em minúsculas/misturadas (sistema novo)
+
+-- 1. Verificar quantas duplicatas existem antes da limpeza
+SELECT 
+    'ANTES DA LIMPEZA' AS STATUS,
+    COUNT(*) AS TOTAL_REGISTROS,
+    COUNT(DISTINCT CO_PROCEDIMENTO || '|' || CO_OCUPACAO || '|' || DT_COMPETENCIA) AS REGISTROS_UNICOS,
+    COUNT(*) - COUNT(DISTINCT CO_PROCEDIMENTO || '|' || CO_OCUPACAO || '|' || DT_COMPETENCIA) AS TOTAL_DUPLICATAS
+FROM RL_PROCEDIMENTO_OCUPACAO
+WHERE DT_COMPETENCIA = '202510';
+
+-- 2. Analisar duplicatas: quantas estão em MAIÚSCULAS vs minúsculas/misturadas
+SELECT 
+    CO_OCUPACAO,
+    CO_PROCEDIMENTO,
+    DT_COMPETENCIA,
+    COUNT(*) AS TOTAL_DUPLICATAS,
+    SUM(CASE WHEN UPPER(TRIM(NO_OCUPACAO)) = TRIM(NO_OCUPACAO) THEN 1 ELSE 0 END) AS TOTAL_MAIUSCULAS,
+    SUM(CASE WHEN UPPER(TRIM(NO_OCUPACAO)) <> TRIM(NO_OCUPACAO) THEN 1 ELSE 0 END) AS TOTAL_MINUSCULAS_MISTURADAS,
+    MIN(CASE WHEN UPPER(TRIM(NO_OCUPACAO)) = TRIM(NO_OCUPACAO) THEN INDICE ELSE NULL END) AS INDICE_MAIUSCULA,
+    MIN(INDICE) AS INDICE_PRIMEIRO
+FROM RL_PROCEDIMENTO_OCUPACAO
+WHERE DT_COMPETENCIA = '202510'
+GROUP BY CO_OCUPACAO, CO_PROCEDIMENTO, DT_COMPETENCIA
+HAVING COUNT(*) > 1
+ORDER BY COUNT(*) DESC;
+
+-- 3. Listar exemplos de duplicatas (primeiras 20)
+SELECT 
+    po.INDICE,
+    po.CO_OCUPACAO,
+    po.CO_PROCEDIMENTO,
+    po.DT_COMPETENCIA,
+    po.NO_OCUPACAO,
+    CASE 
+        WHEN UPPER(TRIM(po.NO_OCUPACAO)) = TRIM(po.NO_OCUPACAO) THEN 'MAIÚSCULAS (ANTIGO)'
+        ELSE 'Minúsculas/Misturadas (NOVO)'
+    END AS TIPO,
+    (SELECT COUNT(*) 
+     FROM RL_PROCEDIMENTO_OCUPACAO po2 
+     WHERE po2.CO_PROCEDIMENTO = po.CO_PROCEDIMENTO
+       AND po2.CO_OCUPACAO = po.CO_OCUPACAO
+       AND po2.DT_COMPETENCIA = po.DT_COMPETENCIA) AS TOTAL_DUPLICATAS
+FROM RL_PROCEDIMENTO_OCUPACAO po
+WHERE po.DT_COMPETENCIA = '202510'
+  AND EXISTS (
+      SELECT 1 
+      FROM RL_PROCEDIMENTO_OCUPACAO po3
+      WHERE po3.CO_PROCEDIMENTO = po.CO_PROCEDIMENTO
+        AND po3.CO_OCUPACAO = po.CO_OCUPACAO
+        AND po3.DT_COMPETENCIA = po.DT_COMPETENCIA
+        AND po3.INDICE <> po.INDICE
+  )
+ORDER BY po.CO_OCUPACAO, po.CO_PROCEDIMENTO, 
+         CASE WHEN UPPER(TRIM(po.NO_OCUPACAO)) = TRIM(po.NO_OCUPACAO) THEN 0 ELSE 1 END,
+         po.INDICE
+ROWS 20;
+
+-- 4. REMOVER DUPLICATAS (preservar MAIÚSCULAS - sistema antigo)
+-- Estratégia: 
+--   - Se existe linha em MAIÚSCULAS: mantém apenas a primeira linha em MAIÚSCULAS (menor INDICE)
+--   - Se não existe linha em MAIÚSCULAS: mantém apenas a primeira linha (menor INDICE)
+-- ATENÇÃO: Execute apenas após validar os resultados acima!
+-- Descomente as linhas abaixo para executar a remoção:
+
+/*
+DELETE FROM RL_PROCEDIMENTO_OCUPACAO
+WHERE DT_COMPETENCIA = '202510'
+  AND INDICE NOT IN (
+      -- Para cada combinação única de CO_PROCEDIMENTO + CO_OCUPACAO + DT_COMPETENCIA,
+      -- mantém apenas uma linha seguindo a prioridade:
+      SELECT MIN(INDICE)
+      FROM RL_PROCEDIMENTO_OCUPACAO po
+      WHERE po.DT_COMPETENCIA = '202510'
+        AND (
+            -- Prioridade 1: Se existe linha em MAIÚSCULAS, mantém a primeira em MAIÚSCULAS
+            (UPPER(TRIM(po.NO_OCUPACAO)) = TRIM(po.NO_OCUPACAO)
+             AND EXISTS (
+                 SELECT 1 
+                 FROM RL_PROCEDIMENTO_OCUPACAO po2
+                 WHERE po2.CO_PROCEDIMENTO = po.CO_PROCEDIMENTO
+                   AND po2.CO_OCUPACAO = po.CO_OCUPACAO
+                   AND po2.DT_COMPETENCIA = po.DT_COMPETENCIA
+                   AND po2.DT_COMPETENCIA = '202510'
+                   AND UPPER(TRIM(po2.NO_OCUPACAO)) = TRIM(po2.NO_OCUPACAO)
+             ))
+            OR
+            -- Prioridade 2: Se não existe linha em MAIÚSCULAS, mantém a primeira linha (menor INDICE)
+            (NOT EXISTS (
+                SELECT 1 
+                FROM RL_PROCEDIMENTO_OCUPACAO po3
+                WHERE po3.CO_PROCEDIMENTO = po.CO_PROCEDIMENTO
+                  AND po3.CO_OCUPACAO = po.CO_OCUPACAO
+                  AND po3.DT_COMPETENCIA = po.DT_COMPETENCIA
+                  AND po3.DT_COMPETENCIA = '202510'
+                  AND UPPER(TRIM(po3.NO_OCUPACAO)) = TRIM(po3.NO_OCUPACAO)
+            ))
+        )
+      GROUP BY po.CO_PROCEDIMENTO, po.CO_OCUPACAO, po.DT_COMPETENCIA
+  );
+*/
+
+-- 5. Verificar resultado após limpeza
+SELECT 
+    'APOS LIMPEZA' AS STATUS,
+    COUNT(*) AS TOTAL_REGISTROS,
+    COUNT(DISTINCT CO_PROCEDIMENTO || '|' || CO_OCUPACAO || '|' || DT_COMPETENCIA) AS REGISTROS_UNICOS,
+    COUNT(*) - COUNT(DISTINCT CO_PROCEDIMENTO || '|' || CO_OCUPACAO || '|' || DT_COMPETENCIA) AS TOTAL_DUPLICATAS,
+    SUM(CASE WHEN UPPER(TRIM(NO_OCUPACAO)) = TRIM(NO_OCUPACAO) THEN 1 ELSE 0 END) AS TOTAL_MAIUSCULAS_PRESERVADAS
+FROM RL_PROCEDIMENTO_OCUPACAO
+WHERE DT_COMPETENCIA = '202510';
+
+-- 6. Verificar se ainda há duplicatas após limpeza
+SELECT 
+    CO_OCUPACAO,
+    CO_PROCEDIMENTO,
+    DT_COMPETENCIA,
+    COUNT(*) AS TOTAL_DUPLICATAS_RESTANTES
+FROM RL_PROCEDIMENTO_OCUPACAO
+WHERE DT_COMPETENCIA = '202510'
+GROUP BY CO_OCUPACAO, CO_PROCEDIMENTO, DT_COMPETENCIA
+HAVING COUNT(*) > 1;
+

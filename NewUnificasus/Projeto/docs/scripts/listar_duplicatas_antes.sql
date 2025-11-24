@@ -1,0 +1,37 @@
+-- Script para LISTAR registros que serão removidos ANTES da exclusão
+-- Execute este script antes de limpar para ver o que será removido
+
+SELECT 
+    '>>> SERA REMOVIDO' AS ACAO,
+    pc.INDICE,
+    pc.CO_CID,
+    pc.CO_PROCEDIMENTO,
+    pc.DT_COMPETENCIA,
+    SUBSTRING(pc.NO_CID FROM 1 FOR 70) AS NO_CID,
+    CASE 
+        WHEN UPPER(pc.NO_CID) = pc.NO_CID THEN 'MAIUSCULA (PRESERVAR)'
+        ELSE 'MISTO'
+    END AS TIPO
+FROM RL_PROCEDIMENTO_CID pc
+WHERE pc.DT_COMPETENCIA = '202510'
+  AND EXISTS (
+      SELECT 1
+      FROM RL_PROCEDIMENTO_CID pc2
+      WHERE pc2.DT_COMPETENCIA = '202510'
+        AND pc2.CO_CID = pc.CO_CID
+        AND pc2.CO_PROCEDIMENTO = pc.CO_PROCEDIMENTO
+        AND pc2.DT_COMPETENCIA = pc.DT_COMPETENCIA
+      GROUP BY pc2.CO_CID, pc2.CO_PROCEDIMENTO, pc2.DT_COMPETENCIA
+      HAVING COUNT(*) > 1
+  )
+  AND pc.INDICE <> (
+      SELECT MIN(INDICE)
+      FROM RL_PROCEDIMENTO_CID pc3
+      WHERE pc3.DT_COMPETENCIA = '202510'
+        AND pc3.CO_CID = pc.CO_CID
+        AND pc3.CO_PROCEDIMENTO = pc.CO_PROCEDIMENTO
+        AND pc3.DT_COMPETENCIA = pc.DT_COMPETENCIA
+  )
+ORDER BY pc.INDICE
+ROWS 1 TO 10;
+

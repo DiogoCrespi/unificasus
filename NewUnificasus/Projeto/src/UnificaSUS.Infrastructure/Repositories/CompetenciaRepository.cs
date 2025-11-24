@@ -199,42 +199,276 @@ public class CompetenciaRepository : ICompetenciaRepository
 
     private async Task CriarTabelaCompetenciaAtivaAsync(CancellationToken cancellationToken)
     {
-        const string sql = @"
-            CREATE TABLE TB_COMPETENCIA_ATIVA (
-                DT_COMPETENCIA VARCHAR(6) NOT NULL PRIMARY KEY,
-                DT_ATIVACAO TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                ST_ATIVA CHAR(1) DEFAULT 'S'
-            )";
+        try
+        {
+            const string sql = @"
+                CREATE TABLE TB_COMPETENCIA_ATIVA (
+                    DT_COMPETENCIA VARCHAR(6) NOT NULL PRIMARY KEY,
+                    DT_ATIVACAO TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    ST_ATIVA CHAR(1) DEFAULT 'N'
+                )";
 
-        using var command = new FbCommand(sql, _context.Connection);
-        await command.ExecuteNonQueryAsync(cancellationToken);
-        
-        _logger.LogInformation("Tabela TB_COMPETENCIA_ATIVA criada com sucesso");
+            using var command = new FbCommand(sql, _context.Connection);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            
+            _logger.LogInformation("Tabela TB_COMPETENCIA_ATIVA criada com sucesso");
+        }
+        catch (Exception ex)
+        {
+            // Se a tabela já existe, ignora o erro
+            if (ex.Message.Contains("already exists") || ex.Message.Contains("já existe") || 
+                ex.Message.Contains("duplicate") || ex.Message.Contains("duplicado"))
+            {
+                _logger.LogDebug("Tabela TB_COMPETENCIA_ATIVA já existe, continuando...");
+            }
+            else
+            {
+                _logger.LogError(ex, "Erro ao criar tabela TB_COMPETENCIA_ATIVA");
+                throw; // Relança se for outro tipo de erro
+            }
+        }
+    }
+
+    public async Task<bool> RegistrarCompetenciaAsync(string competencia, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(competencia))
+        {
+            _logger.LogWarning("Tentativa de registrar competência vazia ou nula");
+            return false;
+        }
+
+        try
+        {
+            await _context.OpenAsync(cancellationToken);
+
+            // Verificar se a tabela TB_COMPETENCIA_ATIVA existe
+            bool tabelaExiste = await VerificarTabelaExisteAsync("TB_COMPETENCIA_ATIVA", cancellationToken);
+
+            if (!tabelaExiste)
+            {
+                // Criar a tabela se não existir
+                _logger.LogInformation("Tabela TB_COMPETENCIA_ATIVA não existe, criando...");
+                await CriarTabelaCompetenciaAtivaAsync(cancellationToken);
+                
+                // Verificar novamente após criar
+                tabelaExiste = await VerificarTabelaExisteAsync("TB_COMPETENCIA_ATIVA", cancellationToken);
+                if (!tabelaExiste)
+                {
+                    _logger.LogError("Falha ao criar tabela TB_COMPETENCIA_ATIVA");
+                    return false;
+                }
+            }
+
+            using var transaction = await _context.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                // Verificar se a competência já existe
+                var verificarSql = "SELECT COUNT(*) FROM TB_COMPETENCIA_ATIVA WHERE DT_COMPETENCIA = @competencia";
+                using var verificarCommand = new FbCommand(verificarSql, _context.Connection, transaction);
+                verificarCommand.Parameters.AddWithValue("@competencia", competencia);
+                
+                var existe = Convert.ToInt32(await verificarCommand.ExecuteScalarAsync(cancellationToken)) > 0;
+
+                if (!existe)
+                {
+                    // Inserir nova competência sem ativá-la (ST_ATIVA = 'N')
+                    var inserirSql = @"
+                        INSERT INTO TB_COMPETENCIA_ATIVA (DT_COMPETENCIA, ST_ATIVA, DT_ATIVACAO)
+                        VALUES (@competencia, 'N', CURRENT_TIMESTAMP)";
+                    
+                    using var inserirCommand = new FbCommand(inserirSql, _context.Connection, transaction);
+                    inserirCommand.Parameters.AddWithValue("@competencia", competencia);
+                    await inserirCommand.ExecuteNonQueryAsync(cancellationToken);
+                    
+                    _logger.LogInformation($"Competência {competencia} registrada na TB_COMPETENCIA_ATIVA (não ativada)");
+                }
+                else
+                {
+                    _logger.LogDebug($"Competência {competencia} já existe na TB_COMPETENCIA_ATIVA");
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Erro ao registrar competência {Competencia} na transação", competencia);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao registrar competência {Competencia}", competencia);
+            // Não relança a exceção - permite que a importação continue mesmo se falhar o registro
+            // A competência pode ser registrada manualmente depois se necessário
+            return false;
+        }
     }
 
     public async Task<IEnumerable<string>> ListarDisponiveisAsync(CancellationToken cancellationToken = default)
     {
-        const string sql = @"
-            SELECT DISTINCT DT_COMPETENCIA
-            FROM TB_PROCEDIMENTO
-            WHERE DT_COMPETENCIA IS NOT NULL
-            ORDER BY DT_COMPETENCIA DESC";
-
         await _context.OpenAsync(cancellationToken);
 
-        var competencias = new List<string>();
-
-        using var command = new FbCommand(sql, _context.Connection);
+        var competencias = new HashSet<string>();
 
         try
         {
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-            while (await reader.ReadAsync(cancellationToken))
+            // 1. Busca competências de TB_PROCEDIMENTO (competências com dados importados)
+            try
             {
-                var competencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA");
-                if (!string.IsNullOrEmpty(competencia))
-                    competencias.Add(competencia);
+                const string sqlProcedimentos = @"
+                    SELECT DISTINCT DT_COMPETENCIA
+                    FROM TB_PROCEDIMENTO
+                    WHERE DT_COMPETENCIA IS NOT NULL
+                      AND TRIM(DT_COMPETENCIA) <> ''";
+
+                using var commandProcedimentos = new FbCommand(sqlProcedimentos, _context.Connection);
+                using var readerProcedimentos = await commandProcedimentos.ExecuteReaderAsync(cancellationToken);
+
+                while (await readerProcedimentos.ReadAsync(cancellationToken))
+                {
+                    var competencia = FirebirdReaderHelper.GetStringSafe(readerProcedimentos, "DT_COMPETENCIA");
+                    if (!string.IsNullOrEmpty(competencia))
+                        competencias.Add(competencia);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao buscar competências de TB_PROCEDIMENTO (pode não existir ou estar vazia)");
+                // Continua mesmo se falhar - pode não ter procedimentos ainda
+            }
+            
+            // 1b. Busca competências de outras tabelas importantes que também têm DT_COMPETENCIA
+            // Isso garante que competências de importações parciais apareçam
+            var tabelasComCompetencia = new[] { "TB_RUBRICA", "TB_CID", "TB_GRUPO", "TB_SUB_GRUPO", "TB_FINANCIAMENTO" };
+            
+            foreach (var tabela in tabelasComCompetencia)
+            {
+                try
+                {
+                    bool tabelaExiste = await VerificarTabelaExisteAsync(tabela, cancellationToken);
+                    if (tabelaExiste)
+                    {
+                        var sql = $@"
+                            SELECT DISTINCT DT_COMPETENCIA
+                            FROM {tabela}
+                            WHERE DT_COMPETENCIA IS NOT NULL
+                              AND TRIM(DT_COMPETENCIA) <> ''";
+                        
+                        using var command = new FbCommand(sql, _context.Connection);
+                        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                        
+                        while (await reader.ReadAsync(cancellationToken))
+                        {
+                            var competencia = FirebirdReaderHelper.GetStringSafe(reader, "DT_COMPETENCIA");
+                            if (!string.IsNullOrEmpty(competencia))
+                                competencias.Add(competencia);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, $"Erro ao buscar competências de {tabela} (ignorado)");
+                    // Continua com próxima tabela
+                }
+            }
+
+            // 2. Busca competências de TB_COMPETENCIA_ATIVA (competências registradas, mesmo sem dados)
+            // Isso garante que competências de importações canceladas apareçam na listagem
+            bool tabelaCompetenciaAtivaExiste = await VerificarTabelaExisteAsync("TB_COMPETENCIA_ATIVA", cancellationToken);
+            
+            if (!tabelaCompetenciaAtivaExiste)
+            {
+                // Se a tabela não existe, cria automaticamente
+                _logger.LogInformation("Tabela TB_COMPETENCIA_ATIVA não existe, criando automaticamente...");
+                try
+                {
+                    await CriarTabelaCompetenciaAtivaAsync(cancellationToken);
+                    tabelaCompetenciaAtivaExiste = await VerificarTabelaExisteAsync("TB_COMPETENCIA_ATIVA", cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Erro ao criar tabela TB_COMPETENCIA_ATIVA automaticamente");
+                    // Continua mesmo se falhar - pode já existir ou ter outro problema
+                }
+            }
+            
+            if (tabelaCompetenciaAtivaExiste)
+            {
+                try
+                {
+                    const string sqlCompetenciaAtiva = @"
+                        SELECT DT_COMPETENCIA
+                        FROM TB_COMPETENCIA_ATIVA
+                        WHERE DT_COMPETENCIA IS NOT NULL
+                          AND TRIM(DT_COMPETENCIA) <> ''";
+
+                    using var commandCompetenciaAtiva = new FbCommand(sqlCompetenciaAtiva, _context.Connection);
+                    using var readerCompetenciaAtiva = await commandCompetenciaAtiva.ExecuteReaderAsync(cancellationToken);
+
+                    while (await readerCompetenciaAtiva.ReadAsync(cancellationToken))
+                    {
+                        var competencia = FirebirdReaderHelper.GetStringSafe(readerCompetenciaAtiva, "DT_COMPETENCIA");
+                        if (!string.IsNullOrEmpty(competencia))
+                            competencias.Add(competencia);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Erro ao buscar competências de TB_COMPETENCIA_ATIVA");
+                    // Continua mesmo se falhar
+                }
+            }
+            
+            // 3. IMPORTANTE: Registra automaticamente competências que existem em outras tabelas
+            // mas não estão em TB_COMPETENCIA_ATIVA (caso de importações canceladas antigas)
+            // Isso garante que todas as competências apareçam na listagem
+            if (tabelaCompetenciaAtivaExiste && competencias.Any())
+            {
+                try
+                {
+                    // Para cada competência encontrada em TB_PROCEDIMENTO, verifica se está em TB_COMPETENCIA_ATIVA
+                    // Se não estiver, registra automaticamente
+                    foreach (var competencia in competencias.ToList()) // ToList() para evitar modificação durante iteração
+                    {
+                        try
+                        {
+                            var verificarSql = "SELECT COUNT(*) FROM TB_COMPETENCIA_ATIVA WHERE DT_COMPETENCIA = @competencia";
+                            using var verificarCommand = new FbCommand(verificarSql, _context.Connection);
+                            verificarCommand.Parameters.AddWithValue("@competencia", competencia);
+                            
+                            var existe = Convert.ToInt32(await verificarCommand.ExecuteScalarAsync(cancellationToken)) > 0;
+                            
+                            if (!existe)
+                            {
+                                // Registra automaticamente
+                                _logger.LogInformation($"Registrando automaticamente competência {competencia} que existe em TB_PROCEDIMENTO mas não em TB_COMPETENCIA_ATIVA");
+                                
+                                var inserirSql = @"
+                                    INSERT INTO TB_COMPETENCIA_ATIVA (DT_COMPETENCIA, ST_ATIVA, DT_ATIVACAO)
+                                    VALUES (@competencia, 'N', CURRENT_TIMESTAMP)";
+                                
+                                using var inserirCommand = new FbCommand(inserirSql, _context.Connection);
+                                inserirCommand.Parameters.AddWithValue("@competencia", competencia);
+                                await inserirCommand.ExecuteNonQueryAsync(cancellationToken);
+                                
+                                _logger.LogInformation($"Competência {competencia} registrada automaticamente");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, $"Erro ao verificar/registrar competência {competencia} automaticamente");
+                            // Continua com próxima competência
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Erro ao registrar competências automaticamente");
+                    // Continua mesmo se falhar
+                }
             }
         }
         catch (Exception ex)
@@ -243,7 +477,8 @@ public class CompetenciaRepository : ICompetenciaRepository
             throw;
         }
 
-        return competencias;
+        // Retorna ordenado (mais recente primeiro)
+        return competencias.OrderByDescending(c => c).ToList();
     }
 }
 

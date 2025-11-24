@@ -1,0 +1,10 @@
+
+RDB$RELATION_NAME               
+=============================== 
+RL_PROCEDIMENTO_INCREMENTO      
+
+
+RDB$RELATION_NAME               
+=============================== 
+RL_PROCEDIMENTO_INCREMENTO      
+
