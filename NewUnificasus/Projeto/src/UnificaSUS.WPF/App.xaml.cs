@@ -57,6 +57,7 @@ public partial class App : System.Windows.Application
                     services.AddScoped<IGrupoRepository, GrupoRepository>();
                     services.AddScoped<IProcedimentoComumRepository, ProcedimentoComumRepository>();
                     services.AddScoped<IRelatorioRepository, RelatorioRepository>();
+                    services.AddScoped<IServicoClassificacaoRepository, ServicoClassificacaoRepository>();
 
                     // Application Services
                     services.AddScoped<ApplicationService.ProcedimentoService>();
@@ -64,6 +65,7 @@ public partial class App : System.Windows.Application
                     services.AddScoped<ApplicationService.GrupoService>();
                     services.AddScoped<ApplicationService.ProcedimentoComumService>();
                     services.AddScoped<ApplicationService.RelatorioService>();
+                    services.AddScoped<ApplicationService.ServicoClassificacaoService>();
 
                     // UI - MainWindow precisa de IConfigurationReader
                     services.AddTransient<MainWindow>();

@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private readonly ApplicationService.GrupoService _grupoService;
     private readonly ApplicationService.ProcedimentoComumService _procedimentoComumService;
     private readonly ApplicationService.RelatorioService _relatorioService;
+    private readonly ApplicationService.ServicoClassificacaoService _servicoClassificacaoService;
     private readonly IConfigurationReader _configurationReader = null!; // Inicializado via DI no construtor
     
     private string _competenciaAtiva = string.Empty;
@@ -82,6 +83,7 @@ public partial class MainWindow : Window
         ApplicationService.GrupoService grupoService,
         ApplicationService.ProcedimentoComumService procedimentoComumService,
         ApplicationService.RelatorioService relatorioService,
+        ApplicationService.ServicoClassificacaoService servicoClassificacaoService,
         IConfigurationReader configurationReader)
     {
         InitializeComponent();
@@ -97,6 +99,8 @@ public partial class MainWindow : Window
             throw new ArgumentNullException(nameof(procedimentoComumService));
         if (relatorioService == null)
             throw new ArgumentNullException(nameof(relatorioService));
+        if (servicoClassificacaoService == null)
+            throw new ArgumentNullException(nameof(servicoClassificacaoService));
         if (configurationReader == null)
             throw new ArgumentNullException(nameof(configurationReader));
         
@@ -105,6 +109,7 @@ public partial class MainWindow : Window
         _grupoService = grupoService;
         _procedimentoComumService = procedimentoComumService;
         _relatorioService = relatorioService;
+        _servicoClassificacaoService = servicoClassificacaoService;
         _configurationReader = configurationReader;
         
         // Obter caminho do banco para título
@@ -1204,12 +1209,425 @@ public partial class MainWindow : Window
                        MessageBoxImage.Information);
     }
 
-    private void CadastrarServico_Click(object sender, RoutedEventArgs e)
+    private async void CadastrarServico_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show("Funcionalidade em desenvolvimento", 
-                       "Aviso", 
-                       MessageBoxButton.OK, 
-                       MessageBoxImage.Information);
+        try
+        {
+            if (string.IsNullOrEmpty(_competenciaAtiva))
+            {
+                MessageBox.Show("Por favor, selecione e ative uma competência antes de cadastrar serviço/classificação.", 
+                              "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            await AbrirJanelaCadastroServicoClassificacaoAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao abrir janela de cadastro:\n{ex.Message}", 
+                          "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task AbrirJanelaCadastroServicoClassificacaoAsync()
+    {
+        var dialog = new Window
+        {
+            Title = "Cadastro de Serviço/Classificação do estabelecimento.",
+            Width = 1000,
+            Height = 600,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this
+        };
+
+        var mainGrid = new Grid();
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // DataGrid com os registros existentes
+        var dataGrid = new DataGrid
+        {
+            AutoGenerateColumns = false,
+            IsReadOnly = true,
+            GridLinesVisibility = DataGridGridLinesVisibility.All,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            SelectionMode = DataGridSelectionMode.Single,
+            Margin = new Thickness(5)
+        };
+
+        // Coluna Id (sequencial para exibição)
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Id",
+            Binding = new Binding("Id"),
+            Width = 60,
+            CanUserSort = false
+        });
+
+        // Coluna Serv. (Código do Serviço)
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Serv.",
+            Binding = new Binding("CoServico"),
+            Width = 80,
+            CanUserSort = true
+        });
+
+        // Coluna Descrição serviço
+        var descServicoColumn = new DataGridTextColumn
+        {
+            Header = "Descrição serviço",
+            Binding = new Binding("DescricaoServico"),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            MinWidth = 300
+        };
+        descServicoColumn.ElementStyle = new Style(typeof(TextBlock));
+        descServicoColumn.ElementStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
+        descServicoColumn.ElementStyle.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(5, 2, 5, 2)));
+        dataGrid.Columns.Add(descServicoColumn);
+
+        // Coluna Class. (Código da Classificação)
+        dataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Class.",
+            Binding = new Binding("CoClassificacao"),
+            Width = 80,
+            CanUserSort = true
+        });
+
+        // Coluna Descrição Classificação
+        var descClassColumn = new DataGridTextColumn
+        {
+            Header = "Descrição Classificação",
+            Binding = new Binding("DescricaoClassificacao"),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            MinWidth = 250
+        };
+        descClassColumn.ElementStyle = new Style(typeof(TextBlock));
+        descClassColumn.ElementStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
+        descClassColumn.ElementStyle.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(5, 2, 5, 2)));
+        dataGrid.Columns.Add(descClassColumn);
+
+        // Configurar altura automática das linhas
+        dataGrid.LoadingRow += (s, e) =>
+        {
+            e.Row.Height = double.NaN; // Auto height
+        };
+
+        Grid.SetRow(dataGrid, 0);
+        mainGrid.Children.Add(dataGrid);
+
+        // Campos de entrada: Serviço e Classificação
+        var inputGrid = new Grid();
+        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = 150 });
+        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = 150 });
+        inputGrid.Margin = new Thickness(5);
+
+        var txtServico = new TextBox
+        {
+            MaxLength = 3,
+            Margin = new Thickness(5, 0, 5, 0)
+        };
+        var txtClassificacao = new TextBox
+        {
+            MaxLength = 3,
+            Margin = new Thickness(5, 0, 5, 0)
+        };
+
+        var lblServico = new Label { Content = "Serviço:", Margin = new Thickness(5, 5, 2, 5) };
+        var lblClassificacao = new Label { Content = "Classificação:", Margin = new Thickness(15, 5, 2, 5) };
+
+        Grid.SetColumn(lblServico, 0);
+        Grid.SetColumn(txtServico, 1);
+        Grid.SetColumn(lblClassificacao, 2);
+        Grid.SetColumn(txtClassificacao, 3);
+
+        inputGrid.Children.Add(lblServico);
+        inputGrid.Children.Add(txtServico);
+        inputGrid.Children.Add(lblClassificacao);
+        inputGrid.Children.Add(txtClassificacao);
+
+        Grid.SetRow(inputGrid, 1);
+        mainGrid.Children.Add(inputGrid);
+
+        // Botões: Novo, Salvar, Cancelar, Excluir
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(5)
+        };
+
+        var btnNovo = new Button
+        {
+            Content = "Novo",
+            Margin = new Thickness(5, 0, 5, 0),
+            Padding = new Thickness(10, 5, 10, 5),
+            Width = 100
+        };
+
+        var btnSalvar = new Button
+        {
+            Content = "Salvar",
+            Margin = new Thickness(5, 0, 5, 0),
+            Padding = new Thickness(10, 5, 10, 5),
+            Width = 100
+        };
+
+        var btnCancelar = new Button
+        {
+            Content = "Cancelar",
+            Margin = new Thickness(5, 0, 5, 0),
+            Padding = new Thickness(10, 5, 10, 5),
+            Width = 100
+        };
+
+        var btnExcluir = new Button
+        {
+            Content = "Excluir",
+            Margin = new Thickness(5, 0, 5, 0),
+            Padding = new Thickness(10, 5, 10, 5),
+            Width = 100
+        };
+
+        buttonPanel.Children.Add(btnNovo);
+        buttonPanel.Children.Add(btnSalvar);
+        buttonPanel.Children.Add(btnCancelar);
+        buttonPanel.Children.Add(btnExcluir);
+
+        Grid.SetRow(buttonPanel, 2);
+        mainGrid.Children.Add(buttonPanel);
+
+        // Mensagem de status no rodapé
+        var statusText = new TextBlock
+        {
+            Text = "Informe o serviço e a classificação com 3 digitos",
+            Margin = new Thickness(5),
+            FontStyle = FontStyles.Italic,
+            Foreground = Brushes.Gray
+        };
+        Grid.SetRow(statusText, 3);
+        mainGrid.Children.Add(statusText);
+
+        dialog.Content = mainGrid;
+
+        // Classe auxiliar para exibição no DataGrid
+        var itensExibicao = new List<ServicoClassificacaoItem>();
+        ServicoClassificacaoItem? itemSelecionado = null;
+
+        // Função para carregar dados
+        Func<Task> carregarDados = async () =>
+        {
+            try
+            {
+                var classificacoes = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.BuscarTodosAsync(_competenciaAtiva));
+
+                itensExibicao.Clear();
+                int id = 1;
+                foreach (var item in classificacoes.OrderBy(x => x.CoServico).ThenBy(x => x.CoClassificacao))
+                {
+                    itensExibicao.Add(new ServicoClassificacaoItem
+                    {
+                        Id = id++,
+                        CoServico = item.CoServico,
+                        DescricaoServico = item.Servico?.NoServico ?? string.Empty,
+                        CoClassificacao = item.CoClassificacao,
+                        DescricaoClassificacao = item.NoClassificacao ?? string.Empty,
+                        ServicoClassificacao = item
+                    });
+                }
+
+                dataGrid.ItemsSource = itensExibicao;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao carregar dados:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        };
+
+        // Handler para quando seleciona um item no DataGrid
+        dataGrid.SelectionChanged += (s, e) =>
+        {
+            if (dataGrid.SelectedItem is ServicoClassificacaoItem item)
+            {
+                itemSelecionado = item;
+                txtServico.Text = item.CoServico;
+                txtClassificacao.Text = item.CoClassificacao;
+                txtServico.IsReadOnly = true;
+                txtClassificacao.IsReadOnly = true;
+                btnSalvar.IsEnabled = false;
+                btnExcluir.IsEnabled = true;
+            }
+            else
+            {
+                itemSelecionado = null;
+                txtServico.IsReadOnly = false;
+                txtClassificacao.IsReadOnly = false;
+                btnSalvar.IsEnabled = true;
+                btnExcluir.IsEnabled = true;
+            }
+        };
+
+        // Carregar dados iniciais
+        await carregarDados();
+
+        // Event handlers
+        btnNovo.Click += (s, e) =>
+        {
+            txtServico.Text = string.Empty;
+            txtClassificacao.Text = string.Empty;
+            dataGrid.SelectedIndex = -1;
+            itemSelecionado = null;
+            txtServico.IsReadOnly = false;
+            txtClassificacao.IsReadOnly = false;
+            btnSalvar.IsEnabled = true;
+            btnExcluir.IsEnabled = false;
+            txtServico.Focus();
+        };
+
+        btnSalvar.Click += async (s, e) =>
+        {
+            var servico = txtServico.Text.Trim();
+            var classificacao = txtClassificacao.Text.Trim();
+
+            // Validar que ambos têm conteúdo
+            if (string.IsNullOrEmpty(servico) || string.IsNullOrEmpty(classificacao))
+            {
+                MessageBox.Show("Por favor, informe o serviço e a classificação.", 
+                              "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // PadLeft para garantir 3 dígitos (preenche com zeros à esquerda)
+            servico = servico.PadLeft(3, '0');
+            classificacao = classificacao.PadLeft(3, '0');
+
+            // Validar comprimento máximo
+            if (servico.Length > 3 || classificacao.Length > 3)
+            {
+                MessageBox.Show("O serviço e a classificação devem ter no máximo 3 dígitos.", 
+                              "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                // Se há item selecionado, não permitir salvar (apenas excluir)
+                if (itemSelecionado != null)
+                {
+                    MessageBox.Show("Um registro já está selecionado. Para criar um novo registro, clique em 'Novo' primeiro. Para modificar, exclua o registro atual e crie um novo.", 
+                                  "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // Verificar se já existe antes de adicionar
+                var existe = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.ExisteAsync(servico, classificacao, _competenciaAtiva));
+                
+                if (existe)
+                {
+                    MessageBox.Show($"Já existe uma classificação '{classificacao}' para o serviço '{servico}' nesta competência.", 
+                                  "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var novoItem = new ServicoClassificacao
+                {
+                    CoServico = servico,
+                    CoClassificacao = classificacao,
+                    DtCompetencia = _competenciaAtiva,
+                    NoClassificacao = string.Empty
+                };
+
+                // Adicionar novo
+                await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.AdicionarAsync(novoItem));
+
+                await carregarDados();
+                dataGrid.SelectedIndex = -1;
+                itemSelecionado = null;
+                txtServico.Text = string.Empty;
+                txtClassificacao.Text = string.Empty;
+                
+                MessageBox.Show("Registro adicionado com sucesso!", 
+                              "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao salvar:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        };
+
+        btnCancelar.Click += (s, e) =>
+        {
+            btnNovo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        };
+
+        btnExcluir.Click += async (s, e) =>
+        {
+            if (itemSelecionado == null)
+            {
+                MessageBox.Show("Por favor, selecione um registro para excluir.", 
+                              "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var confirmacao = MessageBox.Show(
+                $"Deseja realmente excluir o registro?\nServiço: {itemSelecionado.CoServico}\nClassificação: {itemSelecionado.CoClassificacao}",
+                "Confirmar Exclusão",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirmacao == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    await DatabaseRequestQueue.Instance.EnqueueAsync(
+                        async () => await _servicoClassificacaoService.RemoverAsync(
+                            itemSelecionado.CoServico, 
+                            itemSelecionado.CoClassificacao, 
+                            _competenciaAtiva));
+
+                    await carregarDados();
+                    
+                    // Limpar campos e habilitar botões
+                    dataGrid.SelectedIndex = -1;
+                    itemSelecionado = null;
+                    txtServico.Text = string.Empty;
+                    txtClassificacao.Text = string.Empty;
+                    txtServico.IsReadOnly = false;
+                    txtClassificacao.IsReadOnly = false;
+                    btnSalvar.IsEnabled = true;
+                    btnExcluir.IsEnabled = false;
+                    
+                    MessageBox.Show("Registro excluído com sucesso!", 
+                                  "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erro ao excluir:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        };
+
+        dialog.ShowDialog();
+    }
+
+
+    // Classe auxiliar para exibição no DataGrid
+    private class ServicoClassificacaoItem
+    {
+        public int Id { get; set; }
+        public string CoServico { get; set; } = string.Empty;
+        public string DescricaoServico { get; set; } = string.Empty;
+        public string CoClassificacao { get; set; } = string.Empty;
+        public string DescricaoClassificacao { get; set; } = string.Empty;
+        public ServicoClassificacao ServicoClassificacao { get; set; } = null!;
     }
 
     private void DetalhamentoLink_Click(object sender, RoutedEventArgs e)

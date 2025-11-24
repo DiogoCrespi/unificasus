@@ -372,11 +372,10 @@
 
                         <!-- Botões de Ação -->
                         <Button Content="Cadastrar Serviço/Classificação" 
-                                IsEnabled="False"
                                 Padding="10,5" 
                                 Margin="0,0,0,5"
                                 Click="CadastrarServico_Click"
-                                ToolTip="Cadastrar novo serviço ou classificação (indisponível)"/>
+                                ToolTip="Cadastrar novo serviço ou classificação"/>
 
                         <!-- Seleção de Competência -->
                         <Label Content="Competência:" Margin="0,0,0,5" ToolTip="Selecione a competência desejada"/>
