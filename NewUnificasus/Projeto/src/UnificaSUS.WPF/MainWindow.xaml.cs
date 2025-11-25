@@ -670,7 +670,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void ProcedimentosDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ProcedimentosDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ProcedimentosDataGrid.SelectedItem is Procedimento procedimento)
         {
@@ -1250,30 +1250,34 @@ public partial class MainWindow : Window
         var dataGrid = new DataGrid
         {
             AutoGenerateColumns = false,
-            IsReadOnly = true,
+            IsReadOnly = false, // Permite edição para novas linhas
             GridLinesVisibility = DataGridGridLinesVisibility.All,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             SelectionMode = DataGridSelectionMode.Single,
-            Margin = new Thickness(5)
+            Margin = new Thickness(5),
+            CanUserAddRows = false // Controlamos manualmente a adição de linhas
         };
 
         // Coluna Id (sequencial para exibição)
-        dataGrid.Columns.Add(new DataGridTextColumn
+        var idColumn = new DataGridTextColumn
         {
             Header = "Id",
             Binding = new Binding("Id"),
             Width = 60,
-            CanUserSort = false
-        });
+            CanUserSort = true,
+            IsReadOnly = true
+        };
+        dataGrid.Columns.Add(idColumn);
 
-        // Coluna Serv. (Código do Serviço)
-        dataGrid.Columns.Add(new DataGridTextColumn
+        // Coluna Serv. (Código do Serviço) - editável apenas em novas linhas
+        var servicoColumn = new DataGridTextColumn
         {
             Header = "Serv.",
             Binding = new Binding("CoServico"),
             Width = 80,
             CanUserSort = true
-        });
+        };
+        dataGrid.Columns.Add(servicoColumn);
 
         // Coluna Descrição serviço
         var descServicoColumn = new DataGridTextColumn
@@ -1281,21 +1285,23 @@ public partial class MainWindow : Window
             Header = "Descrição serviço",
             Binding = new Binding("DescricaoServico"),
             Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            MinWidth = 300
+            MinWidth = 300,
+            IsReadOnly = true
         };
         descServicoColumn.ElementStyle = new Style(typeof(TextBlock));
         descServicoColumn.ElementStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
         descServicoColumn.ElementStyle.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(5, 2, 5, 2)));
         dataGrid.Columns.Add(descServicoColumn);
 
-        // Coluna Class. (Código da Classificação)
-        dataGrid.Columns.Add(new DataGridTextColumn
+        // Coluna Class. (Código da Classificação) - editável apenas em novas linhas
+        var classificacaoColumn = new DataGridTextColumn
         {
             Header = "Class.",
             Binding = new Binding("CoClassificacao"),
             Width = 80,
             CanUserSort = true
-        });
+        };
+        dataGrid.Columns.Add(classificacaoColumn);
 
         // Coluna Descrição Classificação
         var descClassColumn = new DataGridTextColumn
@@ -1303,7 +1309,8 @@ public partial class MainWindow : Window
             Header = "Descrição Classificação",
             Binding = new Binding("DescricaoClassificacao"),
             Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            MinWidth = 250
+            MinWidth = 250,
+            IsReadOnly = true
         };
         descClassColumn.ElementStyle = new Style(typeof(TextBlock));
         descClassColumn.ElementStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
@@ -1322,9 +1329,9 @@ public partial class MainWindow : Window
         // Campos de entrada: Serviço e Classificação
         var inputGrid = new Grid();
         inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = 150 });
+        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
         inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = 150 });
+        inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
         inputGrid.Margin = new Thickness(5);
 
         var txtServico = new TextBox
@@ -1416,8 +1423,52 @@ public partial class MainWindow : Window
         dialog.Content = mainGrid;
 
         // Classe auxiliar para exibição no DataGrid
-        var itensExibicao = new List<ServicoClassificacaoItem>();
+        var itensExibicao = new ObservableCollection<ServicoClassificacaoItem>();
         ServicoClassificacaoItem? itemSelecionado = null;
+        ServicoClassificacaoItem? linhaNova = null;
+
+        // Função para validar e buscar nome do serviço
+        Func<string, Task<string?>> validarServico = async (codigo) =>
+        {
+            try
+            {
+                codigo = codigo.Trim().PadLeft(3, '0');
+                if (codigo.Length != 3) return null;
+
+                // Buscar classificações do serviço para verificar se existe
+                var classificacoes = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.BuscarPorServicoAsync(codigo, _competenciaAtiva));
+
+                var primeira = classificacoes.FirstOrDefault();
+                return primeira?.Servico?.NoServico;
+            }
+            catch
+            {
+                return null;
+            }
+        };
+
+        // Função para validar e buscar nome da classificação
+        Func<string, string, Task<string?>> validarClassificacao = async (coServico, coClassificacao) =>
+        {
+            try
+            {
+                coServico = coServico.Trim().PadLeft(3, '0');
+                coClassificacao = coClassificacao.Trim().PadLeft(3, '0');
+                
+                if (coServico.Length != 3 || coClassificacao.Length != 3) return null;
+
+                var item = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.BuscarPorCodigosAsync(
+                        coServico, coClassificacao, _competenciaAtiva));
+
+                return item?.NoClassificacao;
+            }
+            catch
+            {
+                return null;
+            }
+        };
 
         // Função para carregar dados
         Func<Task> carregarDados = async () =>
@@ -1429,7 +1480,7 @@ public partial class MainWindow : Window
 
                 itensExibicao.Clear();
                 int id = 1;
-                foreach (var item in classificacoes.OrderBy(x => x.CoServico).ThenBy(x => x.CoClassificacao))
+                foreach (var item in classificacoes.OrderByDescending(x => x.CoServico).ThenByDescending(x => x.CoClassificacao))
                 {
                     itensExibicao.Add(new ServicoClassificacaoItem
                     {
@@ -1438,7 +1489,8 @@ public partial class MainWindow : Window
                         DescricaoServico = item.Servico?.NoServico ?? string.Empty,
                         CoClassificacao = item.CoClassificacao,
                         DescricaoClassificacao = item.NoClassificacao ?? string.Empty,
-                        ServicoClassificacao = item
+                        ServicoClassificacao = item,
+                        IsNovo = false
                     });
                 }
 
@@ -1451,21 +1503,80 @@ public partial class MainWindow : Window
         };
 
         // Handler para quando seleciona um item no DataGrid
-        dataGrid.SelectionChanged += (s, e) =>
+        dataGrid.SelectionChanged += async (s, e) =>
         {
+            // Se havia uma linha nova antes da mudança de seleção, validar antes de trocar
+            if (linhaNova != null && linhaNova != dataGrid.SelectedItem && itensExibicao.Contains(linhaNova))
+            {
+                // Validar serviço se preenchido mas não validado
+                var codigoServico = linhaNova.CoServico?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(codigoServico) && string.IsNullOrEmpty(linhaNova.DescricaoServico))
+                {
+                    var nomeServico = await validarServico(codigoServico);
+                    if (nomeServico != null)
+                    {
+                        linhaNova.DescricaoServico = nomeServico;
+                        linhaNova.CoServico = codigoServico.PadLeft(3, '0');
+                        txtServico.Text = linhaNova.CoServico;
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Serviço '{codigoServico}' inválido ou não encontrado!", 
+                                      "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
+
+                // Validar classificação se preenchida mas não validada
+                var codigoClass = linhaNova.CoClassificacao?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(codigoServico) && !string.IsNullOrEmpty(codigoClass) && 
+                    string.IsNullOrEmpty(linhaNova.DescricaoClassificacao))
+                {
+                    var nomeClass = await validarClassificacao(codigoServico, codigoClass);
+                    if (nomeClass != null)
+                    {
+                        linhaNova.DescricaoClassificacao = nomeClass;
+                        linhaNova.CoClassificacao = codigoClass.PadLeft(3, '0');
+                        txtClassificacao.Text = linhaNova.CoClassificacao;
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Classificação '{codigoClass}' inválida ou não encontrada para o serviço '{codigoServico}'!", 
+                                      "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
+            }
+
             if (dataGrid.SelectedItem is ServicoClassificacaoItem item)
             {
-                itemSelecionado = item;
-                txtServico.Text = item.CoServico;
-                txtClassificacao.Text = item.CoClassificacao;
-                txtServico.IsReadOnly = true;
-                txtClassificacao.IsReadOnly = true;
-                btnSalvar.IsEnabled = false;
-                btnExcluir.IsEnabled = true;
+                if (item.IsNovo)
+                {
+                    // Linha nova - sincronizar com campos do rodapé
+                    itemSelecionado = null;
+                    linhaNova = item;
+                    txtServico.Text = item.CoServico ?? string.Empty;
+                    txtClassificacao.Text = item.CoClassificacao ?? string.Empty;
+                    txtServico.IsReadOnly = false;
+                    txtClassificacao.IsReadOnly = false;
+                    btnSalvar.IsEnabled = true;
+                    btnExcluir.IsEnabled = false;
+                }
+                else
+                {
+                    // Item existente selecionado
+                    itemSelecionado = item;
+                    linhaNova = null;
+                    txtServico.Text = item.CoServico;
+                    txtClassificacao.Text = item.CoClassificacao;
+                    txtServico.IsReadOnly = true;
+                    txtClassificacao.IsReadOnly = true;
+                    btnSalvar.IsEnabled = false;
+                    btnExcluir.IsEnabled = true;
+                }
             }
             else
             {
                 itemSelecionado = null;
+                // Não limpar linhaNova aqui, ela pode estar sendo editada
                 txtServico.IsReadOnly = false;
                 txtClassificacao.IsReadOnly = false;
                 btnSalvar.IsEnabled = true;
@@ -1476,27 +1587,479 @@ public partial class MainWindow : Window
         // Carregar dados iniciais
         await carregarDados();
 
+        // Event handlers para sincronizar campos do rodapé com linha nova
+        txtServico.TextChanged += (s, e) =>
+        {
+            if (linhaNova != null && dataGrid.SelectedItem == linhaNova)
+            {
+                linhaNova.CoServico = txtServico.Text ?? string.Empty;
+            }
+        };
+
+        txtClassificacao.TextChanged += (s, e) =>
+        {
+            if (linhaNova != null && dataGrid.SelectedItem == linhaNova)
+            {
+                linhaNova.CoClassificacao = txtClassificacao.Text ?? string.Empty;
+            }
+        };
+
+        // Event handler para validar serviço quando o usuário sair do campo
+        txtServico.LostFocus += async (s, e) =>
+        {
+            if (linhaNova == null) return;
+
+            var codigo = txtServico.Text?.Trim() ?? string.Empty;
+            linhaNova.CoServico = codigo;
+
+            if (!string.IsNullOrEmpty(codigo) && codigo.Length <= 3)
+            {
+                var nomeServico = await validarServico(codigo);
+                if (nomeServico != null)
+                {
+                    linhaNova.DescricaoServico = nomeServico;
+                    linhaNova.CoServico = codigo.PadLeft(3, '0');
+                    txtServico.Text = linhaNova.CoServico;
+                    statusText.Text = $"Serviço válido: {nomeServico}";
+                    statusText.Foreground = Brushes.Green;
+                }
+                else
+                {
+                    linhaNova.DescricaoServico = string.Empty;
+                    MessageBox.Show($"Serviço '{codigo}' inválido ou não encontrado!", 
+                                  "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    statusText.Text = "Serviço inválido";
+                    statusText.Foreground = Brushes.Red;
+                }
+            }
+        };
+
+        // Event handler para validar classificação quando o usuário sair do campo
+        txtClassificacao.LostFocus += async (s, e) =>
+        {
+            if (linhaNova == null) return;
+
+            var codigoClass = txtClassificacao.Text?.Trim() ?? string.Empty;
+            linhaNova.CoClassificacao = codigoClass;
+            var codigoServico = linhaNova.CoServico?.Trim() ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(codigoServico) && !string.IsNullOrEmpty(codigoClass) && 
+                codigoServico.Length <= 3 && codigoClass.Length <= 3)
+            {
+                var nomeClass = await validarClassificacao(codigoServico, codigoClass);
+                if (nomeClass != null)
+                {
+                    linhaNova.DescricaoClassificacao = nomeClass;
+                    linhaNova.CoClassificacao = codigoClass.PadLeft(3, '0');
+                    txtClassificacao.Text = linhaNova.CoClassificacao;
+                    statusText.Text = $"Classificação válida: {nomeClass}";
+                    statusText.Foreground = Brushes.Green;
+                }
+                else
+                {
+                    linhaNova.DescricaoClassificacao = string.Empty;
+                    MessageBox.Show($"Classificação '{codigoClass}' inválida ou não encontrada para o serviço '{codigoServico}'!", 
+                                  "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    statusText.Text = "Classificação inválida";
+                    statusText.Foreground = Brushes.Red;
+                }
+            }
+        };
+
+        // Função auxiliar para tentar salvar linha nova (retorna true se salvou com sucesso ou não havia nada para salvar)
+        Func<Task<bool>> tentarSalvarLinhaNova = async () =>
+        {
+            if (linhaNova == null || !itensExibicao.Contains(linhaNova)) return true;
+
+            var servico = linhaNova.CoServico?.Trim() ?? string.Empty;
+            var classificacao = linhaNova.CoClassificacao?.Trim() ?? string.Empty;
+
+            // Se não há dados para salvar, retorna true
+            if (string.IsNullOrEmpty(servico) && string.IsNullOrEmpty(classificacao)) return true;
+
+            // Validar campos
+            if (string.IsNullOrEmpty(servico) || string.IsNullOrEmpty(classificacao) ||
+                string.IsNullOrEmpty(linhaNova.DescricaoServico) || string.IsNullOrEmpty(linhaNova.DescricaoClassificacao))
+            {
+                return false; // Não pode salvar, campos incompletos
+            }
+
+            try
+            {
+                servico = servico.PadLeft(3, '0');
+                classificacao = classificacao.PadLeft(3, '0');
+
+                var existe = await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.ExisteAsync(servico, classificacao, _competenciaAtiva));
+                
+                if (existe) return false; // Já existe
+
+                var novoItem = new ServicoClassificacao
+                {
+                    CoServico = servico,
+                    CoClassificacao = classificacao,
+                    DtCompetencia = _competenciaAtiva,
+                    NoClassificacao = linhaNova.DescricaoClassificacao
+                };
+
+                await DatabaseRequestQueue.Instance.EnqueueAsync(
+                    async () => await _servicoClassificacaoService.AdicionarAsync(novoItem));
+
+                itensExibicao.Remove(linhaNova);
+                linhaNova = null;
+                await carregarDados();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        };
+
+        // Event handler para prevenir fechamento da janela sem salvar linha nova
+        dialog.Closing += async (s, e) =>
+        {
+            if (linhaNova != null && itensExibicao.Contains(linhaNova))
+            {
+                var servico = linhaNova.CoServico?.Trim() ?? string.Empty;
+                var classificacao = linhaNova.CoClassificacao?.Trim() ?? string.Empty;
+
+                // Verificar se há dados para salvar
+                if (!string.IsNullOrEmpty(servico) || !string.IsNullOrEmpty(classificacao))
+                {
+                    var resultado = MessageBox.Show(
+                        "Há uma linha nova não salva. Deseja salvar antes de fechar?",
+                        "Confirmar",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
+
+                    if (resultado == MessageBoxResult.Yes)
+                    {
+                        e.Cancel = true; // Cancela o fechamento temporariamente
+                        
+                        // Validar e focar em campos não preenchidos
+                        if (string.IsNullOrEmpty(servico))
+                        {
+                            dataGrid.SelectedItem = linhaNova;
+                            dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, servicoColumn);
+                            dataGrid.BeginEdit();
+                            txtServico.Focus();
+                            MessageBox.Show("Por favor, informe o serviço antes de salvar.", 
+                                          "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return; // Mantém a janela aberta
+                        }
+
+                        if (string.IsNullOrEmpty(classificacao))
+                        {
+                            dataGrid.SelectedItem = linhaNova;
+                            dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, classificacaoColumn);
+                            dataGrid.BeginEdit();
+                            txtClassificacao.Focus();
+                            MessageBox.Show("Por favor, informe a classificação antes de salvar.", 
+                                          "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return; // Mantém a janela aberta
+                        }
+
+                        if (string.IsNullOrEmpty(linhaNova.DescricaoServico))
+                        {
+                            dataGrid.SelectedItem = linhaNova;
+                            dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, servicoColumn);
+                            dataGrid.BeginEdit();
+                            txtServico.Focus();
+                            MessageBox.Show("Por favor, valide o serviço (deve ter descrição preenchida) antes de salvar.", 
+                                          "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return; // Mantém a janela aberta
+                        }
+
+                        if (string.IsNullOrEmpty(linhaNova.DescricaoClassificacao))
+                        {
+                            dataGrid.SelectedItem = linhaNova;
+                            dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, classificacaoColumn);
+                            dataGrid.BeginEdit();
+                            txtClassificacao.Focus();
+                            MessageBox.Show("Por favor, valide a classificação (deve ter descrição preenchida) antes de salvar.", 
+                                          "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return; // Mantém a janela aberta
+                        }
+
+                        // Tentar salvar
+                        var salvou = await tentarSalvarLinhaNova();
+                        if (salvou)
+                        {
+                            // Permite fechar
+                            e.Cancel = false;
+                            dialog.DialogResult = true;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Não foi possível salvar. Verifique se todos os campos estão preenchidos e válidos.", 
+                                          "Erro", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            // Mantém a janela aberta
+                            e.Cancel = true;
+                        }
+                    }
+                    else if (resultado == MessageBoxResult.Cancel)
+                    {
+                        e.Cancel = true; // Cancela o fechamento
+                    }
+                    // Se No, permite fechar normalmente (e.Cancel já é false)
+                }
+            }
+        };
+
+        // Event handler para prevenir edição de linhas existentes
+        dataGrid.BeginningEdit += (s, e) =>
+        {
+            if (e.Row.Item is ServicoClassificacaoItem item && !item.IsNovo)
+            {
+                // Cancelar edição de linhas existentes nas colunas de código
+                if (e.Column == servicoColumn || e.Column == classificacaoColumn)
+                {
+                    e.Cancel = true;
+                    MessageBox.Show("Para modificar um registro existente, exclua-o e crie um novo.", 
+                                  "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+        };
+
+        // Event handler para quando o usuário edita uma célula no DataGrid
+        dataGrid.CellEditEnding += async (s, e) =>
+        {
+            if (e.EditAction == DataGridEditAction.Cancel) return;
+
+            var item = e.Row.Item as ServicoClassificacaoItem;
+            if (item == null || !item.IsNovo) return;
+
+            if (e.Column == servicoColumn)
+            {
+                // Validar serviço
+                var codigo = item.CoServico?.Trim() ?? string.Empty;
+                // Sincronizar com campo do rodapé
+                if (linhaNova == item)
+                {
+                    txtServico.Text = codigo;
+                }
+                
+                if (codigo.Length > 0 && codigo.Length <= 3)
+                {
+                    var nomeServico = await validarServico(codigo);
+                    if (nomeServico != null)
+                    {
+                        item.DescricaoServico = nomeServico;
+                        item.CoServico = codigo.PadLeft(3, '0');
+                        if (linhaNova == item)
+                        {
+                            txtServico.Text = item.CoServico;
+                        }
+                        statusText.Text = $"Serviço válido: {nomeServico}";
+                        statusText.Foreground = Brushes.Green;
+                    }
+                    else
+                    {
+                        item.DescricaoServico = string.Empty;
+                        MessageBox.Show($"Serviço '{codigo}' inválido ou não encontrado!", 
+                                      "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        statusText.Text = "Serviço inválido";
+                        statusText.Foreground = Brushes.Red;
+                    }
+                }
+            }
+            else if (e.Column == classificacaoColumn)
+            {
+                // Validar classificação (precisa do serviço também)
+                var codigoServico = item.CoServico?.Trim() ?? string.Empty;
+                var codigoClass = item.CoClassificacao?.Trim() ?? string.Empty;
+                // Sincronizar com campo do rodapé
+                if (linhaNova == item)
+                {
+                    txtClassificacao.Text = codigoClass;
+                }
+                
+                if (codigoServico.Length > 0 && codigoClass.Length > 0 && 
+                    codigoServico.Length <= 3 && codigoClass.Length <= 3)
+                {
+                    var nomeClass = await validarClassificacao(codigoServico, codigoClass);
+                    if (nomeClass != null)
+                    {
+                        item.DescricaoClassificacao = nomeClass;
+                        item.CoClassificacao = codigoClass.PadLeft(3, '0');
+                        if (linhaNova == item)
+                        {
+                            txtClassificacao.Text = item.CoClassificacao;
+                        }
+                        statusText.Text = $"Classificação válida: {nomeClass}";
+                        statusText.Foreground = Brushes.Green;
+                    }
+                    else
+                    {
+                        item.DescricaoClassificacao = string.Empty;
+                        MessageBox.Show($"Classificação '{codigoClass}' inválida ou não encontrada para o serviço '{codigoServico}'!", 
+                                      "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        statusText.Text = "Classificação inválida";
+                        statusText.Foreground = Brushes.Red;
+                    }
+                }
+            }
+        };
+
+        // Validar quando o usuário clicar fora da célula ou em outra coisa
+        dataGrid.LostFocus += async (s, e) =>
+        {
+            if (linhaNova != null && itensExibicao.Contains(linhaNova))
+            {
+                // Validar serviço se preenchido
+                var codigoServico = linhaNova.CoServico?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(codigoServico) && string.IsNullOrEmpty(linhaNova.DescricaoServico))
+                {
+                    var nomeServico = await validarServico(codigoServico);
+                    if (nomeServico != null)
+                    {
+                        linhaNova.DescricaoServico = nomeServico;
+                        linhaNova.CoServico = codigoServico.PadLeft(3, '0');
+                        txtServico.Text = linhaNova.CoServico;
+                    }
+                }
+
+                // Validar classificação se preenchida
+                var codigoClass = linhaNova.CoClassificacao?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(codigoServico) && !string.IsNullOrEmpty(codigoClass) && 
+                    string.IsNullOrEmpty(linhaNova.DescricaoClassificacao))
+                {
+                    var nomeClass = await validarClassificacao(codigoServico, codigoClass);
+                    if (nomeClass != null)
+                    {
+                        linhaNova.DescricaoClassificacao = nomeClass;
+                        linhaNova.CoClassificacao = codigoClass.PadLeft(3, '0');
+                        txtClassificacao.Text = linhaNova.CoClassificacao;
+                    }
+                }
+            }
+        };
+
         // Event handlers
         btnNovo.Click += (s, e) =>
         {
+            // Remover linha nova anterior se existir
+            if (linhaNova != null && itensExibicao.Contains(linhaNova))
+            {
+                itensExibicao.Remove(linhaNova);
+            }
+
+            // Criar nova linha vazia
+            var maxId = itensExibicao.Any() ? itensExibicao.Max(x => x.Id) : 0;
+            linhaNova = new ServicoClassificacaoItem
+            {
+                Id = maxId + 1,
+                CoServico = string.Empty,
+                DescricaoServico = string.Empty,
+                CoClassificacao = string.Empty,
+                DescricaoClassificacao = string.Empty,
+                IsNovo = true
+            };
+
+            itensExibicao.Insert(0, linhaNova);
+            
+            // Selecionar a nova linha e permitir edição
+            dataGrid.SelectedIndex = 0;
+            dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, servicoColumn);
+            dataGrid.BeginEdit();
+
             txtServico.Text = string.Empty;
             txtClassificacao.Text = string.Empty;
-            dataGrid.SelectedIndex = -1;
             itemSelecionado = null;
-            txtServico.IsReadOnly = false;
-            txtClassificacao.IsReadOnly = false;
             btnSalvar.IsEnabled = true;
             btnExcluir.IsEnabled = false;
-            txtServico.Focus();
+            statusText.Text = "Digite o código do serviço (3 dígitos)";
+            statusText.Foreground = Brushes.Gray;
         };
 
         btnSalvar.Click += async (s, e) =>
         {
-            var servico = txtServico.Text.Trim();
-            var classificacao = txtClassificacao.Text.Trim();
+            // Verificar se há uma linha nova no DataGrid
+            if (linhaNova != null && itensExibicao.Contains(linhaNova))
+            {
+                var servico = linhaNova.CoServico?.Trim() ?? string.Empty;
+                var classificacao = linhaNova.CoClassificacao?.Trim() ?? string.Empty;
+
+                // Validar que ambos têm conteúdo e focar na célula não preenchida
+                if (string.IsNullOrEmpty(servico))
+                {
+                    MessageBox.Show("Por favor, informe o serviço.", 
+                                  "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    // Focar na célula de serviço
+                    dataGrid.SelectedItem = linhaNova;
+                    dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, servicoColumn);
+                    dataGrid.BeginEdit();
+                    txtServico.Focus();
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(classificacao))
+                {
+                    MessageBox.Show("Por favor, informe a classificação.", 
+                                  "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    // Focar na célula de classificação
+                    dataGrid.SelectedItem = linhaNova;
+                    dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, classificacaoColumn);
+                    dataGrid.BeginEdit();
+                    txtClassificacao.Focus();
+                    return;
+                }
+
+                // Validar que ambos foram validados (têm descrições)
+                if (string.IsNullOrEmpty(linhaNova.DescricaoServico))
+                {
+                    MessageBox.Show("Por favor, valide o serviço (deve ter descrição preenchida).", 
+                                  "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    // Focar na célula de serviço
+                    dataGrid.SelectedItem = linhaNova;
+                    dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, servicoColumn);
+                    dataGrid.BeginEdit();
+                    txtServico.Focus();
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(linhaNova.DescricaoClassificacao))
+                {
+                    MessageBox.Show("Por favor, valide a classificação (deve ter descrição preenchida).", 
+                                  "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    // Focar na célula de classificação
+                    dataGrid.SelectedItem = linhaNova;
+                    dataGrid.CurrentCell = new DataGridCellInfo(linhaNova, classificacaoColumn);
+                    dataGrid.BeginEdit();
+                    txtClassificacao.Focus();
+                    return;
+                }
+
+                // Usar função auxiliar para salvar
+                var salvou = await tentarSalvarLinhaNova();
+                if (salvou)
+                {
+                    dataGrid.SelectedIndex = -1;
+                    itemSelecionado = null;
+                    txtServico.Text = string.Empty;
+                    txtClassificacao.Text = string.Empty;
+                    statusText.Text = "Informe o serviço e a classificação com 3 digitos";
+                    statusText.Foreground = Brushes.Gray;
+                    
+                    MessageBox.Show("Registro adicionado com sucesso!", 
+                                  "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                else
+                {
+                    MessageBox.Show("Erro ao salvar. Verifique se o registro já existe ou se há algum problema com os dados.", 
+                                  "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+
+            // Fallback para o método antigo (campos de texto)
+            var servicoTxt = txtServico.Text.Trim();
+            var classificacaoTxt = txtClassificacao.Text.Trim();
 
             // Validar que ambos têm conteúdo
-            if (string.IsNullOrEmpty(servico) || string.IsNullOrEmpty(classificacao))
+            if (string.IsNullOrEmpty(servicoTxt) || string.IsNullOrEmpty(classificacaoTxt))
             {
                 MessageBox.Show("Por favor, informe o serviço e a classificação.", 
                               "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1504,11 +2067,11 @@ public partial class MainWindow : Window
             }
 
             // PadLeft para garantir 3 dígitos (preenche com zeros à esquerda)
-            servico = servico.PadLeft(3, '0');
-            classificacao = classificacao.PadLeft(3, '0');
+            servicoTxt = servicoTxt.PadLeft(3, '0');
+            classificacaoTxt = classificacaoTxt.PadLeft(3, '0');
 
             // Validar comprimento máximo
-            if (servico.Length > 3 || classificacao.Length > 3)
+            if (servicoTxt.Length > 3 || classificacaoTxt.Length > 3)
             {
                 MessageBox.Show("O serviço e a classificação devem ter no máximo 3 dígitos.", 
                               "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1527,19 +2090,19 @@ public partial class MainWindow : Window
 
                 // Verificar se já existe antes de adicionar
                 var existe = await DatabaseRequestQueue.Instance.EnqueueAsync(
-                    async () => await _servicoClassificacaoService.ExisteAsync(servico, classificacao, _competenciaAtiva));
+                    async () => await _servicoClassificacaoService.ExisteAsync(servicoTxt, classificacaoTxt, _competenciaAtiva));
                 
                 if (existe)
                 {
-                    MessageBox.Show($"Já existe uma classificação '{classificacao}' para o serviço '{servico}' nesta competência.", 
+                    MessageBox.Show($"Já existe uma classificação '{classificacaoTxt}' para o serviço '{servicoTxt}' nesta competência.", 
                                   "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 var novoItem = new ServicoClassificacao
                 {
-                    CoServico = servico,
-                    CoClassificacao = classificacao,
+                    CoServico = servicoTxt,
+                    CoClassificacao = classificacaoTxt,
                     DtCompetencia = _competenciaAtiva,
                     NoClassificacao = string.Empty
                 };
@@ -1565,7 +2128,23 @@ public partial class MainWindow : Window
 
         btnCancelar.Click += (s, e) =>
         {
-            btnNovo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            // Remover linha nova se existir
+            if (linhaNova != null && itensExibicao.Contains(linhaNova))
+            {
+                itensExibicao.Remove(linhaNova);
+                linhaNova = null;
+            }
+            
+            dataGrid.SelectedIndex = -1;
+            itemSelecionado = null;
+            txtServico.Text = string.Empty;
+            txtClassificacao.Text = string.Empty;
+            txtServico.IsReadOnly = false;
+            txtClassificacao.IsReadOnly = false;
+            btnSalvar.IsEnabled = true;
+            btnExcluir.IsEnabled = false;
+            statusText.Text = "Informe o serviço e a classificação com 3 digitos";
+            statusText.Foreground = Brushes.Gray;
         };
 
         btnExcluir.Click += async (s, e) =>
@@ -1627,7 +2206,8 @@ public partial class MainWindow : Window
         public string DescricaoServico { get; set; } = string.Empty;
         public string CoClassificacao { get; set; } = string.Empty;
         public string DescricaoClassificacao { get; set; } = string.Empty;
-        public ServicoClassificacao ServicoClassificacao { get; set; } = null!;
+        public ServicoClassificacao? ServicoClassificacao { get; set; }
+        public bool IsNovo { get; set; } = false;
     }
 
     private void DetalhamentoLink_Click(object sender, RoutedEventArgs e)
