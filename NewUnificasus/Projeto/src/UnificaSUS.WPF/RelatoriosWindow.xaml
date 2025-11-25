@@ -5,6 +5,373 @@
         Height="650" Width="900"
         WindowStartupLocation="CenterOwner"
         Background="LightGray">
+    <Window.Resources>
+        <!-- Estilo para arredondar TextBox (campos de entrada) -->
+        <Style TargetType="TextBox">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                        Focusable="False"
+                                        HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                                        VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"
+                                        Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#F5F5F5"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#A0A0A0"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#808080"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="3,2"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        
+        <!-- Estilo para arredondar ComboBox -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="MainBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="5">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="Gray" 
+                                                    Direction="315" 
+                                                    ShadowDepth="2" 
+                                                    Opacity="0.3" 
+                                                    BlurRadius="4"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton Grid.ColumnSpan="2"
+                                                Name="ToggleButton"
+                                                Focusable="False"
+                                                IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}"
+                                                ClickMode="Press"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Cursor="Hand">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                    <ContentPresenter Grid.Column="0"
+                                                    Name="ContentSite"
+                                                    IsHitTestVisible="False"
+                                                    Content="{TemplateBinding SelectionBoxItem}"
+                                                    ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                    ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                    Margin="5,2,2,2"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Left"/>
+                                    <Path Grid.Column="1"
+                                        Fill="DarkGray" 
+                                        HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center" 
+                                        Data="M 0 0 L 4 4 L 8 0 Z"
+                                        IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                            <ContentPresenter Name="ContentSite2"
+                                            IsHitTestVisible="False"
+                                            Content="{TemplateBinding SelectionBoxItem}"
+                                            ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                            ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                            Margin="5,2,25,2"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Left"
+                                            Visibility="Hidden"/>
+                            <TextBox x:Name="PART_EditableTextBox"
+                                   Style="{x:Null}"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Margin="5,2,25,2"
+                                   Focusable="True"
+                                   Background="Transparent"
+                                   Visibility="Hidden"
+                                   IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                            <Popup Name="Popup"
+                                 Placement="Bottom"
+                                 IsOpen="{TemplateBinding IsDropDownOpen}"
+                                 AllowsTransparency="True" 
+                                 Focusable="False"
+                                 PopupAnimation="Slide">
+                                <Border x:Name="DropDownBorder"
+                                      Background="White"
+                                      BorderThickness="1"
+                                      BorderBrush="Gray"
+                                      CornerRadius="5"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                      MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="3" 
+                                                        Opacity="0.4" 
+                                                        BlurRadius="6"/>
+                                    </Border.Effect>
+                                    <ScrollViewer Margin="4,6,4,6" 
+                                                SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="3" 
+                                                        Opacity="0.4" 
+                                                        BlurRadius="5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="false">
+                                <Setter TargetName="DropDownBorder" Property="MinHeight" Value="95"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter Property="Foreground" Value="Gray"/>
+                                <Setter TargetName="MainBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="1" 
+                                                        Opacity="0.1" 
+                                                        BlurRadius="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsGrouping" Value="true">
+                                <Setter Property="ScrollViewer.CanContentScroll" Value="false"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Estilo para arredondar ComboBoxItem -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="0"
+                                CornerRadius="3"
+                                Padding="5,2"
+                                Margin="2">
+                            <ContentPresenter HorizontalAlignment="Left" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#D0E8FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Estilo para arredondar botões com sombras -->
+        <Style TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Cursor="Hand">
+                            <Border.Effect>
+                                <DropShadowEffect Color="Gray" 
+                                                Direction="315" 
+                                                ShadowDepth="2" 
+                                                Opacity="0.3" 
+                                                BlurRadius="4"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Content="{TemplateBinding Content}"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="3" 
+                                                        Opacity="0.4" 
+                                                        BlurRadius="5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="1" 
+                                                        Opacity="0.2" 
+                                                        BlurRadius="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="1" 
+                                                        Opacity="0.1" 
+                                                        BlurRadius="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="LightGray"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="5,2"/>
+        </Style>
+        
+        <!-- Estilo para arredondar GroupBox -->
+        <Style TargetType="GroupBox">
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupBox">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="Gray" 
+                                                Direction="315" 
+                                                ShadowDepth="1" 
+                                                Opacity="0.2" 
+                                                BlurRadius="3"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <ContentPresenter Grid.Row="0" 
+                                                ContentSource="Header"
+                                                RecognizesAccessKey="True"
+                                                Margin="5,0,0,5"/>
+                                <ContentPresenter Grid.Row="1" 
+                                                ContentSource="Content"
+                                                Margin="0"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Estilo para arredondar ListBox -->
+        <Style TargetType="ListBox">
+            <Setter Property="BorderBrush" Value="#808080"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Estilo para ListBoxItem -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="0"
+                                CornerRadius="2"
+                                Padding="3,2"
+                                Margin="1">
+                            <ContentPresenter HorizontalAlignment="Left" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#D0E8FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -28,13 +395,13 @@
                 </Grid.RowDefinitions>
 
                 <!-- Radio Buttons para tipo de filtro -->
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,10,10">
-                    <RadioButton x:Name="RbGrupo" Content="Grupo" IsChecked="True" Margin="0,2" Checked="TipoFiltro_Changed"/>
-                    <RadioButton x:Name="RbSubGrupo" Content="Sub-grupo" Margin="0,2" Checked="TipoFiltro_Changed"/>
-                    <RadioButton x:Name="RbFormaOrganizacao" Content="Forma de organização" Margin="0,2" Checked="TipoFiltro_Changed"/>
-                    <RadioButton x:Name="RbTipoLeito" Content="Tipo de Leito" Margin="0,2" Checked="TipoFiltro_Changed"/>
-                    <RadioButton x:Name="RbInstrumentoRegistro" Content="Instrumento de Registro" Margin="0,2" Checked="TipoFiltro_Changed"/>
-                    <RadioButton x:Name="RbProcedimento" Content="Procedimento" Margin="0,2" Checked="TipoFiltro_Changed"/>
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,10,10" ToolTip="Selecione o tipo de filtro para buscar procedimentos">
+                    <RadioButton x:Name="RbGrupo" Content="Grupo" IsChecked="True" Margin="0,2" Checked="TipoFiltro_Changed" ToolTip="Filtrar por grupo de procedimentos"/>
+                    <RadioButton x:Name="RbSubGrupo" Content="Sub-grupo" Margin="0,2" Checked="TipoFiltro_Changed" ToolTip="Filtrar por sub-grupo de procedimentos"/>
+                    <RadioButton x:Name="RbFormaOrganizacao" Content="Forma de organização" Margin="0,2" Checked="TipoFiltro_Changed" ToolTip="Filtrar por forma de organização"/>
+                    <RadioButton x:Name="RbTipoLeito" Content="Tipo de Leito" Margin="0,2" Checked="TipoFiltro_Changed" ToolTip="Filtrar por tipo de leito"/>
+                    <RadioButton x:Name="RbInstrumentoRegistro" Content="Instrumento de Registro" Margin="0,2" Checked="TipoFiltro_Changed" ToolTip="Filtrar por instrumento de registro"/>
+                    <RadioButton x:Name="RbProcedimento" Content="Procedimento" Margin="0,2" Checked="TipoFiltro_Changed" ToolTip="Filtrar por procedimento específico"/>
                 </StackPanel>
 
                 <!-- ComboBox editável com lista de todos os itens -->
@@ -47,7 +414,7 @@
                              SelectionChanged="ComboBoxItens_SelectionChanged"
                              KeyDown="ComboBoxItens_KeyDown"
                              ToolTip="Digite ou selecione um item da lista"/>
-                    <Button Content="→" Width="30" Height="25" Click="BtnAdicionar_Click" Background="Red" Foreground="White" FontWeight="Bold" ToolTip="Adicionar item à lista de impressão"/>
+                    <Button Content="→" Width="30" Height="25" Click="BtnAdicionar_Click" Background="LightGreen" Foreground="White" FontWeight="Bold" ToolTip="Adicionar item à lista de impressão"/>
                 </StackPanel>
 
                 <!-- ListBox de itens selecionados -->
@@ -72,7 +439,7 @@
 
                 <!-- Título do relatório -->
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,10">
-                    <Label Content="Título do relatório:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <Label Content="Título do relatório:" VerticalAlignment="Center" Margin="0,0,5,0" ToolTip="Campo para definir o título do relatório"/>
                     <TextBox x:Name="TxtTituloRelatorio" Width="300" Text="Relatório de Procedimentos" ToolTip="Título que aparecerá no relatório"/>
                 </StackPanel>
 
@@ -116,9 +483,9 @@
         </GroupBox>
 
         <!-- Status Bar -->
-        <StatusBar Grid.Row="3" VerticalAlignment="Bottom">
+        <StatusBar Grid.Row="3" VerticalAlignment="Bottom" ToolTip="Barra de status do sistema">
             <StatusBarItem>
-                <TextBlock x:Name="StatusTextBlock" Text="Pronto"/>
+                <TextBlock x:Name="StatusTextBlock" Text="Pronto" ToolTip="Status atual do sistema"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>

@@ -1518,6 +1518,8 @@ public partial class MainWindow : Window
                         linhaNova.DescricaoServico = nomeServico;
                         linhaNova.CoServico = codigoServico.PadLeft(3, '0');
                         txtServico.Text = linhaNova.CoServico;
+                        // Atualizar DataGrid para mostrar a descrição
+                        dataGrid.Items.Refresh();
                     }
                     else
                     {
@@ -1537,6 +1539,8 @@ public partial class MainWindow : Window
                         linhaNova.DescricaoClassificacao = nomeClass;
                         linhaNova.CoClassificacao = codigoClass.PadLeft(3, '0');
                         txtClassificacao.Text = linhaNova.CoClassificacao;
+                        // Atualizar DataGrid para mostrar a descrição
+                        dataGrid.Items.Refresh();
                     }
                     else
                     {
@@ -1622,6 +1626,8 @@ public partial class MainWindow : Window
                     txtServico.Text = linhaNova.CoServico;
                     statusText.Text = $"Serviço válido: {nomeServico}";
                     statusText.Foreground = Brushes.Green;
+                    // Atualizar DataGrid para mostrar a descrição
+                    dataGrid.Items.Refresh();
                 }
                 else
                 {
@@ -1630,6 +1636,8 @@ public partial class MainWindow : Window
                                   "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
                     statusText.Text = "Serviço inválido";
                     statusText.Foreground = Brushes.Red;
+                    // Atualizar DataGrid para limpar a descrição
+                    dataGrid.Items.Refresh();
                 }
             }
         };
@@ -1654,6 +1662,8 @@ public partial class MainWindow : Window
                     txtClassificacao.Text = linhaNova.CoClassificacao;
                     statusText.Text = $"Classificação válida: {nomeClass}";
                     statusText.Foreground = Brushes.Green;
+                    // Atualizar DataGrid para mostrar a descrição
+                    dataGrid.Items.Refresh();
                 }
                 else
                 {
@@ -1662,6 +1672,8 @@ public partial class MainWindow : Window
                                   "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
                     statusText.Text = "Classificação inválida";
                     statusText.Foreground = Brushes.Red;
+                    // Atualizar DataGrid para limpar a descrição
+                    dataGrid.Items.Refresh();
                 }
             }
         };
@@ -1853,6 +1865,8 @@ public partial class MainWindow : Window
                         }
                         statusText.Text = $"Serviço válido: {nomeServico}";
                         statusText.Foreground = Brushes.Green;
+                        // Atualizar DataGrid para mostrar a descrição
+                        dataGrid.Items.Refresh();
                     }
                     else
                     {
@@ -1861,6 +1875,8 @@ public partial class MainWindow : Window
                                       "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
                         statusText.Text = "Serviço inválido";
                         statusText.Foreground = Brushes.Red;
+                        // Atualizar DataGrid para limpar a descrição
+                        dataGrid.Items.Refresh();
                     }
                 }
             }
@@ -1889,6 +1905,8 @@ public partial class MainWindow : Window
                         }
                         statusText.Text = $"Classificação válida: {nomeClass}";
                         statusText.Foreground = Brushes.Green;
+                        // Atualizar DataGrid para mostrar a descrição
+                        dataGrid.Items.Refresh();
                     }
                     else
                     {
@@ -1897,6 +1915,8 @@ public partial class MainWindow : Window
                                       "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
                         statusText.Text = "Classificação inválida";
                         statusText.Foreground = Brushes.Red;
+                        // Atualizar DataGrid para limpar a descrição
+                        dataGrid.Items.Refresh();
                     }
                 }
             }
@@ -1917,6 +1937,8 @@ public partial class MainWindow : Window
                         linhaNova.DescricaoServico = nomeServico;
                         linhaNova.CoServico = codigoServico.PadLeft(3, '0');
                         txtServico.Text = linhaNova.CoServico;
+                        // Atualizar DataGrid para mostrar a descrição
+                        dataGrid.Items.Refresh();
                     }
                 }
 
@@ -1931,6 +1953,8 @@ public partial class MainWindow : Window
                         linhaNova.DescricaoClassificacao = nomeClass;
                         linhaNova.CoClassificacao = codigoClass.PadLeft(3, '0');
                         txtClassificacao.Text = linhaNova.CoClassificacao;
+                        // Atualizar DataGrid para mostrar a descrição
+                        dataGrid.Items.Refresh();
                     }
                 }
             }

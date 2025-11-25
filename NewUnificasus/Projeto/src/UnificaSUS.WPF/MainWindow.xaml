@@ -12,7 +12,213 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         
-        <!-- Estilo para arredondar botões -->
+        <!-- Estilo para arredondar TextBox (campos de entrada) -->
+        <Style TargetType="TextBox">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                        Focusable="False"
+                                        HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                                        VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"
+                                        Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#F5F5F5"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#A0A0A0"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#808080"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="3,2"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        
+        <!-- Estilo para arredondar ComboBox -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="MainBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="5">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="Gray" 
+                                                    Direction="315" 
+                                                    ShadowDepth="2" 
+                                                    Opacity="0.3" 
+                                                    BlurRadius="4"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- ToggleButton invisível cobrindo toda a área para tornar clicável -->
+                                    <ToggleButton Grid.ColumnSpan="2"
+                                                Name="ToggleButton"
+                                                Focusable="False"
+                                                IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}"
+                                                ClickMode="Press"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Cursor="Hand">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                    <ContentPresenter Grid.Column="0"
+                                                    Name="ContentSite"
+                                                    IsHitTestVisible="False"
+                                                    Content="{TemplateBinding SelectionBoxItem}"
+                                                    ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                    ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                    Margin="5,2,2,2"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Left"/>
+                                    <Path Grid.Column="1"
+                                        Fill="DarkGray" 
+                                        HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center" 
+                                        Data="M 0 0 L 4 4 L 8 0 Z"
+                                        IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                            <ContentPresenter Name="ContentSite2"
+                                            IsHitTestVisible="False"
+                                            Content="{TemplateBinding SelectionBoxItem}"
+                                            ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                            ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                            Margin="5,2,25,2"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Left"
+                                            Visibility="Hidden"/>
+                            <TextBox x:Name="PART_EditableTextBox"
+                                   Style="{x:Null}"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Margin="5,2,25,2"
+                                   Focusable="True"
+                                   Background="Transparent"
+                                   Visibility="Hidden"
+                                   IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                            <Popup Name="Popup"
+                                 Placement="Bottom"
+                                 IsOpen="{TemplateBinding IsDropDownOpen}"
+                                 AllowsTransparency="True" 
+                                 Focusable="False"
+                                 PopupAnimation="Slide">
+                                <Border x:Name="DropDownBorder"
+                                      Background="White"
+                                      BorderThickness="1"
+                                      BorderBrush="Gray"
+                                      CornerRadius="5"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                      MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="3" 
+                                                        Opacity="0.4" 
+                                                        BlurRadius="6"/>
+                                    </Border.Effect>
+                                    <ScrollViewer Margin="4,6,4,6" 
+                                                SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="3" 
+                                                        Opacity="0.4" 
+                                                        BlurRadius="5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="false">
+                                <Setter TargetName="DropDownBorder" Property="MinHeight" Value="95"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter Property="Foreground" Value="Gray"/>
+                                <Setter TargetName="MainBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="1" 
+                                                        Opacity="0.1" 
+                                                        BlurRadius="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsGrouping" Value="true">
+                                <Setter Property="ScrollViewer.CanContentScroll" Value="false"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Estilo para arredondar ComboBoxItem (itens do dropdown) -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="0"
+                                CornerRadius="3"
+                                Padding="5,2"
+                                Margin="2">
+                            <ContentPresenter HorizontalAlignment="Left" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#D0E8FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Estilo para arredondar botões com sombras -->
         <Style TargetType="Button">
             <Setter Property="Template">
                 <Setter.Value>
@@ -21,17 +227,56 @@
                                 Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="5">
+                                CornerRadius="5"
+                                Cursor="Hand">
+                            <Border.Effect>
+                                <DropShadowEffect Color="Gray" 
+                                                Direction="315" 
+                                                ShadowDepth="2" 
+                                                Opacity="0.3" 
+                                                BlurRadius="4"/>
+                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="Center" 
                                             VerticalAlignment="Center"
-                                            Content="{TemplateBinding Content}"/>
+                                            Content="{TemplateBinding Content}"
+                                            Margin="{TemplateBinding Padding}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="3" 
+                                                        Opacity="0.4" 
+                                                        BlurRadius="5"/>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#D0D0D0"/>
+                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="1" 
+                                                        Opacity="0.2" 
+                                                        BlurRadius="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="Gray" 
+                                                        Direction="315" 
+                                                        ShadowDepth="1" 
+                                                        Opacity="0.1" 
+                                                        BlurRadius="2"/>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -67,14 +312,16 @@
                             IsIndeterminate="False"
                             Value="0"
                             Margin="0,0,6,0"
-                            Visibility="Collapsed"/>
+                            Visibility="Collapsed"
+                            ToolTip="Barra de progresso das operações em andamento"/>
                 <TextBlock x:Name="LoadingStatusTextBlock" 
                           Text="" 
                           VerticalAlignment="Center"
                           FontSize="10"
                           Foreground="DarkBlue"
                           MaxWidth="150"
-                          TextTrimming="CharacterEllipsis"/>
+                          TextTrimming="CharacterEllipsis"
+                          ToolTip="Status da operação em andamento"/>
             </StackPanel>
             
             <!-- Cabeçalho Centralizado com Nome do Submenu (Fixo, não se move) -->
@@ -114,11 +361,12 @@
             </Grid.ColumnDefinitions>
 
             <!-- TreeView de Categorias (Esquerda) -->
-            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,0,0" VerticalAlignment="Stretch" ToolTip="Árvore de categorias de procedimentos">
+            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,0,0" VerticalAlignment="Stretch" CornerRadius="5" ToolTip="Árvore de categorias de procedimentos">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" 
                               HorizontalScrollBarVisibility="Auto"
                               CanContentScroll="False"
-                              PreviewMouseWheel="TreeViewScrollViewer_PreviewMouseWheel">
+                              PreviewMouseWheel="TreeViewScrollViewer_PreviewMouseWheel"
+                              ToolTip="Área de rolagem da árvore de categorias">
                     <TreeView x:Name="CategoriasTreeView" 
                               BorderThickness="0"
                               SelectedItemChanged="CategoriasTreeView_SelectedItemChanged"
@@ -180,7 +428,8 @@
                          ResizeBehavior="PreviousAndNext"
                          Width="5"
                          Background="LightGray"
-                         Cursor="SizeWE"/>
+                         Cursor="SizeWE"
+                         ToolTip="Arraste para redimensionar a largura da árvore de categorias"/>
 
             <!-- Área Central: Detalhes do Procedimento e Grid -->
             <Grid Grid.Column="2" Margin="0,0,0,0">
@@ -190,8 +439,8 @@
                 </Grid.RowDefinitions>
 
                 <!-- Campos de Detalhes do Procedimento -->
-                <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,0,5">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8">
+                <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White" Margin="0,0,0,5" CornerRadius="5">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8" ToolTip="Área de rolagem dos detalhes do procedimento">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -250,7 +499,7 @@
                             <TextBox x:Name="TxtValorSP" Grid.Row="0" Grid.Column="5" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Valor do Serviço Profissional" IsReadOnly="True"/>
 
                             <Label Grid.Row="0" Grid.Column="6" Content="Sexo:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Sexo permitido para o procedimento"/>
-                            <TextBox x:Name="TxtSexo" Grid.Row="0" Grid.Column="7" Margin="2,2,5,2" Padding="3,2" FontSize="11" MinWidth="150" ToolTip="Sexo permitido para o procedimento (Masculino, Feminino, Ambos, Não se aplica)" IsReadOnly="True"/>
+                            <TextBox x:Name="TxtSexo" Grid.Row="0" Grid.Column="7" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Sexo permitido para o procedimento (Masculino, Feminino, Ambos, Não se aplica)" IsReadOnly="True"/>
 
                             <Label Grid.Row="0" Grid.Column="8" Content="Permanencia:" HorizontalAlignment="Right" Margin="5,2,2,2" Padding="0" ToolTip="Dias de permanência"/>
                             <TextBox x:Name="TxtPermanencia" Grid.Row="0" Grid.Column="9" Margin="2,2,5,2" Padding="3,2" FontSize="11" ToolTip="Quantidade de dias de permanência" IsReadOnly="True"/>
@@ -286,7 +535,7 @@
                 </Border>
 
                 <!-- Grid de Procedimentos -->
-                <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White" VerticalAlignment="Stretch" ToolTip="Lista de procedimentos. Clique em uma linha para ver os detalhes">
+                <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White" VerticalAlignment="Stretch" CornerRadius="5" ToolTip="Lista de procedimentos. Clique em uma linha para ver os detalhes">
                     <DataGrid x:Name="ProcedimentosDataGrid" 
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
@@ -363,10 +612,11 @@
                          ResizeBehavior="PreviousAndNext"
                          Width="5"
                          Background="LightGray"
-                         Cursor="SizeWE"/>
+                         Cursor="SizeWE"
+                         ToolTip="Arraste para redimensionar a largura do painel de filtros e ações"/>
 
             <!-- Painel Direito: Filtros e Ações -->
-            <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="5">
+            <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="White" Padding="5" CornerRadius="5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -403,6 +653,7 @@
 
                         <!-- Botões de Ação -->
                         <Button Content="Cadastrar Serviço/Classificação" 
+                                Background="LightBlue"
                                 Padding="10,5" 
                                 Margin="0,0,0,5"
                                 Click="CadastrarServico_Click"
@@ -435,8 +686,8 @@
                     </StackPanel>
 
                     <!-- Área para exibição dinâmica dos relacionados -->
-                    <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,5,0,0">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,5,0,0" CornerRadius="5" ToolTip="Área de exibição dos itens relacionados ao procedimento selecionado">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" ToolTip="Área de rolagem dos itens relacionados">
                             <Grid x:Name="AreaRelacionados" Background="WhiteSmoke" MinHeight="100">
                                 <TextBlock Text="Selecione um procedimento para ver os itens relacionados." 
                                            TextWrapping="Wrap" 
@@ -489,10 +740,10 @@
                        HorizontalAlignment="Center" 
                        VerticalAlignment="Center"
                        Margin="10,5">
-                <Hyperlink NavigateUri="http://claupers.blogspot.com.br" 
+                <Hyperlink NavigateUri="https://github.com/DiogoCrespi/unificasus" 
                            RequestNavigate="SiteLink_RequestNavigate"
-                           ToolTip="Abre o site claupers.blogspot.com.br em seu navegador">
-                    <Run Text="Para atualizações e informações visite claupers.blogspot.com.br"/>
+                           ToolTip="Abre o repositório GitHub em seu navegador">
+                    <Run Text="Para atualizações e informações visite https://github.com/DiogoCrespi/unificasus"/>
                 </Hyperlink>
             </TextBlock>
 
